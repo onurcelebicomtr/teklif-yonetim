@@ -597,35 +597,6 @@ export default function YeniTeklifPage() {
       };
       await html2pdf().set(opt).from(printRef.current).save();
 
-      // Teklif verisini JSON olarak da indir (2. cihaz yedek — içe aktarma için)
-      const proposalData = {
-        id: editId || Date.now().toString(),
-        brand_id: brandId,
-        proposal_no: proposalNo,
-        proposal_date: proposalDate,
-        project_name: projectName,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_city: customerCity,
-        customer_address: customerAddress,
-        prepared_by: preparedBy.trim(),
-        items,
-        discount_value: discountValue,
-        currency,
-        include_vat: includeVAT,
-        conditions,
-        global_hide_prices: globalHidePrices,
-        status: 'sent',
-        total: finalTotal,
-      };
-      const jsonBlob = new Blob([JSON.stringify(proposalData, null, 2)], { type: 'application/json' });
-      const jsonUrl = URL.createObjectURL(jsonBlob);
-      const jsonLink = document.createElement('a');
-      jsonLink.href = jsonUrl;
-      jsonLink.download = `${proposalNo}_${projectName || 'Teklif'}.json`;
-      jsonLink.click();
-      URL.revokeObjectURL(jsonUrl);
-
       // PDF indirildiğinde otomatik olarak geçmişe kaydet veya güncelle
       if (editId) {
         await updateProposal(editId, {
@@ -674,6 +645,36 @@ export default function YeniTeklifPage() {
     }
   };
 
+  const handleDownloadJSON = () => {
+    const data = {
+      id: editId || Date.now().toString(),
+      brand_id: brandId,
+      proposal_no: proposalNo,
+      proposal_date: proposalDate,
+      project_name: projectName,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      customer_city: customerCity,
+      customer_address: customerAddress,
+      prepared_by: preparedBy.trim(),
+      items,
+      discount_value: discountValue,
+      currency,
+      include_vat: includeVAT,
+      conditions,
+      global_hide_prices: globalHidePrices,
+      status: 'sent',
+      total: finalTotal,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${proposalNo}_${projectName || 'Teklif'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredProducts = brandProducts.filter((p) => {
     if (!productSearch) return true;
     const words = productSearch.toLowerCase().split(/\s+/).filter(w => w.length > 0);
@@ -696,6 +697,7 @@ export default function YeniTeklifPage() {
           <div className="flex-1" />
           <button onClick={handlePrint} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Yazdır</button>
           <button onClick={handleDownloadPDF} disabled={!isFormValid} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid ? 'bg-red-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><FileDown className="w-4 h-4" /> PDF İndir</button>
+          <button onClick={handleDownloadJSON} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600"><FileDown className="w-4 h-4" /> JSON İndir</button>
           <button onClick={handleSave} disabled={!isFormValid} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> Kaydet</button>
           {!isFormValid && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Hazırlayan alanını doldurun</span>}
         </div>
@@ -929,6 +931,7 @@ export default function YeniTeklifPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setIsPrintMode(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-900"><Eye className="w-4 h-4" /> Önizle</button>
+          <button onClick={handleDownloadJSON} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600"><FileDown className="w-4 h-4" /> JSON</button>
           <button onClick={handleSave} disabled={!isFormValid || saving} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid && !saving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> {saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
         </div>
       </div>
