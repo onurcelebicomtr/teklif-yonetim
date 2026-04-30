@@ -597,6 +597,35 @@ export default function YeniTeklifPage() {
       };
       await html2pdf().set(opt).from(printRef.current).save();
 
+      // Teklif verisini JSON olarak da indir (2. cihaz yedek — içe aktarma için)
+      const proposalData = {
+        id: editId || Date.now().toString(),
+        brand_id: brandId,
+        proposal_no: proposalNo,
+        proposal_date: proposalDate,
+        project_name: projectName,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_city: customerCity,
+        customer_address: customerAddress,
+        prepared_by: preparedBy.trim(),
+        items,
+        discount_value: discountValue,
+        currency,
+        include_vat: includeVAT,
+        conditions,
+        global_hide_prices: globalHidePrices,
+        status: 'sent',
+        total: finalTotal,
+      };
+      const jsonBlob = new Blob([JSON.stringify(proposalData, null, 2)], { type: 'application/json' });
+      const jsonUrl = URL.createObjectURL(jsonBlob);
+      const jsonLink = document.createElement('a');
+      jsonLink.href = jsonUrl;
+      jsonLink.download = `${proposalNo}_${projectName || 'Teklif'}.json`;
+      jsonLink.click();
+      URL.revokeObjectURL(jsonUrl);
+
       // PDF indirildiğinde otomatik olarak geçmişe kaydet veya güncelle
       if (editId) {
         await updateProposal(editId, {
