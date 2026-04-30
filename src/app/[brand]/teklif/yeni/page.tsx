@@ -6,6 +6,7 @@ import { useAppStore } from '@/lib/store';
 import { getBrand } from '@/lib/brands';
 import { formatCurrency, getCurrencySymbol, numberToText, generateProposalNo, getTodayDate, getValidityDate, getValidityText } from '@/lib/helpers';
 import type { ProposalItem, Proposal, PackageTemplate, PackageItem } from '@/lib/types';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
   Plus, Trash2, Copy, GripVertical, Eye, EyeOff, Truck, Save, FileDown,
   Printer, ArrowLeft, Search, Users, ChevronDown, RefreshCw, Package, UserCheck, AlertCircle, Boxes, X, Edit2,
@@ -418,6 +419,7 @@ export default function YeniTeklifPage() {
     setPkgProductSearch('');
     setShowPkgProductSearch(false);
     syncPackagesToFile(newPkgs);
+    if (isSupabaseConfigured()) supabase.from('packages').upsert({ id: updated.id, brand_id: updated.brand_id, name: updated.name, items: updated.items });
   };
 
   const updatePackageItem = (idx: number, field: string, value: any) => {
@@ -431,6 +433,7 @@ export default function YeniTeklifPage() {
     setPackages(newPkgs);
     setEditingPackage(updated);
     syncPackagesToFile(newPkgs);
+    if (isSupabaseConfigured()) supabase.from('packages').upsert({ id: updated.id, brand_id: updated.brand_id, name: updated.name, items: updated.items });
   };
 
   const renamePackage = (newName: string) => {
@@ -440,6 +443,7 @@ export default function YeniTeklifPage() {
     setPackages(newPkgs);
     setEditingPackage(updated);
     syncPackagesToFile(newPkgs);
+    if (isSupabaseConfigured()) supabase.from('packages').upsert({ id: updated.id, brand_id: updated.brand_id, name: updated.name, items: updated.items });
   };
 
   const duplicatePackage = (pkg: PackageTemplate) => {
@@ -474,6 +478,7 @@ export default function YeniTeklifPage() {
     setPkgProductSearch('');
     setShowPkgProductSearch(false);
     syncPackagesToFile(newPkgs);
+    if (isSupabaseConfigured()) supabase.from('packages').upsert({ id: updated.id, brand_id: updated.brand_id, name: updated.name, items: updated.items });
   };
 
   // Paket yönetimi: paketten ürün sil
@@ -485,6 +490,7 @@ export default function YeniTeklifPage() {
     setPackages(newPkgs);
     setEditingPackage(updated);
     syncPackagesToFile(newPkgs);
+    if (isSupabaseConfigured()) supabase.from('packages').upsert({ id: updated.id, brand_id: updated.brand_id, name: updated.name, items: updated.items });
   };
 
   // Paket yönetimi: paketi teklife yükle
@@ -516,54 +522,62 @@ export default function YeniTeklifPage() {
 
   const isFormValid = preparedBy.trim().length > 0;
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
     if (!isFormValid) return alert('Teklifi Hazırlayan alanı zorunludur!');
-    if (editId) {
-      // Update existing proposal
-      updateProposal(editId, {
-        proposal_no: proposalNo,
-        proposal_date: proposalDate,
-        project_name: projectName,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_city: customerCity,
-        customer_address: customerAddress,
-        prepared_by: preparedBy.trim(),
-        items,
-        discount_value: discountValue,
-        currency,
-        include_vat: includeVAT,
-        conditions,
-        global_hide_prices: globalHidePrices,
-        total: finalTotal,
-      });
-      alert('Teklif başarıyla güncellendi!');
-    } else {
-      // Create new proposal
-      const proposal: Proposal = {
-        id: Date.now().toString(),
-        brand_id: brandId,
-        proposal_no: proposalNo,
-        proposal_date: proposalDate,
-        project_name: projectName,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_city: customerCity,
-        customer_address: customerAddress,
-        prepared_by: preparedBy.trim(),
-        items,
-        discount_value: discountValue,
-        currency,
-        include_vat: includeVAT,
-        conditions,
-        global_hide_prices: globalHidePrices,
-        status: 'draft',
-        total: finalTotal,
-      };
-      addProposal(proposal);
-      alert('Teklif başarıyla kaydedildi!');
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editId) {
+        await updateProposal(editId, {
+          proposal_no: proposalNo,
+          proposal_date: proposalDate,
+          project_name: projectName,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_city: customerCity,
+          customer_address: customerAddress,
+          prepared_by: preparedBy.trim(),
+          items,
+          discount_value: discountValue,
+          currency,
+          include_vat: includeVAT,
+          conditions,
+          global_hide_prices: globalHidePrices,
+          total: finalTotal,
+        });
+      } else {
+        const proposal: Proposal = {
+          id: Date.now().toString(),
+          brand_id: brandId,
+          proposal_no: proposalNo,
+          proposal_date: proposalDate,
+          project_name: projectName,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_city: customerCity,
+          customer_address: customerAddress,
+          prepared_by: preparedBy.trim(),
+          items,
+          discount_value: discountValue,
+          currency,
+          include_vat: includeVAT,
+          conditions,
+          global_hide_prices: globalHidePrices,
+          status: 'draft',
+          total: finalTotal,
+        };
+        await addProposal(proposal);
+      }
+      // IndexedDB yazmasının tamamlanması için kısa bekleme (alert event loop'u bloklar)
+      await new Promise((r) => setTimeout(r, 300));
+      router.push(`/${brandId}/teklifler`);
+    } catch (err) {
+      console.error('handleSave error:', err);
+      alert('Kaydetme sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      setSaving(false);
     }
-    router.push(`/${brandId}/teklifler`);
   };
 
   const handlePrint = () => window.print();
@@ -585,7 +599,7 @@ export default function YeniTeklifPage() {
 
       // PDF indirildiğinde otomatik olarak geçmişe kaydet veya güncelle
       if (editId) {
-        updateProposal(editId, {
+        await updateProposal(editId, {
           proposal_no: proposalNo,
           proposal_date: proposalDate,
           project_name: projectName,
@@ -624,7 +638,7 @@ export default function YeniTeklifPage() {
           status: 'sent',
           total: finalTotal,
         };
-        addProposal(proposal);
+        await addProposal(proposal);
       }
     } catch {
       alert('PDF oluşturulurken hata oluştu.');
@@ -886,7 +900,7 @@ export default function YeniTeklifPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setIsPrintMode(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-900"><Eye className="w-4 h-4" /> Önizle</button>
-          <button onClick={handleSave} disabled={!isFormValid} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> Kaydet</button>
+          <button onClick={handleSave} disabled={!isFormValid || saving} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid && !saving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> {saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { getBrand } from '@/lib/brands';
 import { Search, Plus, Trash2, Edit2, X, Save, Package, FileSpreadsheet, ChevronLeft, ChevronRight, Filter, Tag } from 'lucide-react';
 import { useState, useRef, useMemo } from 'react';
 import type { Product } from '@/lib/types';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -13,7 +14,7 @@ export default function UrunlerPage() {
   const params = useParams();
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
-  const { products, addProduct, removeProduct, setProducts } = useAppStore();
+  const { products, addProduct, updateProduct, removeProduct, setProducts } = useAppStore();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedManufacturer, setSelectedManufacturer] = useState('');
@@ -79,10 +80,10 @@ export default function UrunlerPage() {
     setPage(1);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return alert('Ürün adı giriniz.');
     if (editingId) {
-      setProducts(products.map((p) => p.id === editingId ? { ...p, ...form, price: parseFloat(form.price) || 0, cost: parseFloat(form.cost) || 0 } : p));
+      await updateProduct(editingId, { ...form, price: parseFloat(form.price) || 0, cost: parseFloat(form.cost) || 0 });
       setEditingId(null);
     } else {
       const newProduct: Product = {
@@ -97,7 +98,7 @@ export default function UrunlerPage() {
         category: form.category,
         currency: form.currency,
       };
-      addProduct(newProduct);
+      await addProduct(newProduct);
     }
     setForm({ name: '', description: '', price: '', cost: '', image: '', product_link: '', category: '', currency: 'TRY' });
     setShowForm(false);
@@ -265,6 +266,12 @@ export default function UrunlerPage() {
 
     if (confirm(msg)) {
       setProducts([...otherBrandProducts, ...updatedBrandProducts]);
+      // Supabase'e de yaz
+      if (isSupabaseConfigured()) {
+        supabase.from('products').upsert(updatedBrandProducts).then(({ error }: any) => {
+          if (error) console.error('Supabase upsert products error:', error);
+        });
+      }
       alert(`Tamamlandı! ${added} eklendi, ${updated} güncellendi.`);
     }
   };

@@ -4,7 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import { getBrand } from '@/lib/brands';
 import { formatCurrency, getCurrencySymbol } from '@/lib/helpers';
-import { Search, Trash2, Clock, CheckCircle, XCircle, Eye, Send, Upload, UserCheck, Calendar, FileText, Copy } from 'lucide-react';
+import { Search, Trash2, Clock, CheckCircle, XCircle, Eye, Send, Upload, UserCheck, Calendar, FileText, Copy, FileDown } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useState, useRef } from 'react';
 import type { ProposalStatus, Proposal } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types';
@@ -53,7 +54,7 @@ export default function TekliflerPage() {
     updateProposal(id, { status });
   };
 
-  const duplicateProposal = (p: Proposal) => {
+  const duplicateProposal = async (p: Proposal) => {
     const newId = `dup-${Date.now()}-${Math.random().toString(36).substr(2, 7)}`;
     const newNo = p.proposal_no + '-KOPYA';
     const dup: Proposal = {
@@ -63,11 +64,11 @@ export default function TekliflerPage() {
       status: 'draft' as ProposalStatus,
       items: p.items.map(item => ({ ...item, id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` })),
     };
-    addProposal(dup);
+    await addProposal(dup);
     router.push(`/${brandId}/teklif/yeni?id=${newId}`);
   };
 
-  // Eski teklifleri Excel'den içe aktar
+  // Eski teklifleri Excel, CSV, JSON veya PDF'den içe aktar
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -104,7 +105,7 @@ export default function TekliflerPage() {
             status: 'approved',
             total: parseFloat(row['Toplam'] || row['total'] || '0') || 0,
           };
-          addProposal(proposal);
+          await addProposal(proposal);
           imported++;
         }
         alert(`${imported} teklif başarıyla içe aktarıldı!`);
@@ -139,7 +140,7 @@ export default function TekliflerPage() {
             status: 'approved',
             total: parseFloat(row['Toplam'] || row['total'] || '0') || 0,
           };
-          addProposal(proposal);
+          await addProposal(proposal);
           imported++;
         }
         alert(`${imported} teklif başarıyla içe aktarıldı!`);
@@ -216,7 +217,7 @@ export default function TekliflerPage() {
             status: row.status || 'approved',
             total: row.total || 0,
           };
-          addProposal(proposal);
+          await addProposal(proposal);
           existingIds.add(newId);
           existingNos.add(proposalNo);
           imported++;
@@ -229,8 +230,61 @@ export default function TekliflerPage() {
         console.error('JSON import error:', err);
         alert('JSON dosyası okunurken hata oluştu.');
       }
+    } else if (ext === 'pdf') {
+      try {
+        // Dosya adından bilgi çıkar: "MP-2604-864_Ertan Yavuz.pdf" gibi
+        const baseName = file.name.replace(/\.pdf$/i, '');
+        const parts = baseName.split('_');
+        const proposalNo = parts[0] || `PDF-${Date.now()}`;
+        const projectName = parts.slice(1).join('_') || baseName;
+
+        // PDF'i Supabase Storage'a yükle
+        let pdfUrl = '';
+        if (isSupabaseConfigured()) {
+          const fileName = `${brandId}/${Date.now()}-${file.name}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('proposal-pdfs')
+            .upload(fileName, file, { contentType: 'application/pdf' });
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage.from('proposal-pdfs').getPublicUrl(fileName);
+            pdfUrl = urlData.publicUrl;
+          } else {
+            console.error('PDF upload error:', uploadErr);
+          }
+        }
+
+        const proposal: Proposal = {
+          id: `pdf-${Date.now()}-${Math.random().toString(36).substr(2, 7)}`,
+          brand_id: brandId,
+          proposal_no: proposalNo,
+          proposal_date: new Date().toLocaleDateString('tr-TR'),
+          project_name: projectName,
+          customer_name: '',
+          customer_phone: '',
+          customer_city: '',
+          customer_address: '',
+          prepared_by: '',
+          items: [],
+          discount_value: 0,
+          currency: 'TRY',
+          include_vat: true,
+          conditions: '',
+          global_hide_prices: false,
+          status: 'approved',
+          total: 0,
+          pdf_url: pdfUrl,
+        };
+        await addProposal(proposal);
+        if (isSupabaseConfigured() && pdfUrl) {
+          (async () => { try { await supabase.from('proposals').update({ pdf_url: pdfUrl }).eq('id', proposal.id); } catch (err) { console.error('pdf_url update error:', err); } })();
+        }
+        alert('PDF teklif olarak eklendi!');
+      } catch (err) {
+        console.error('PDF import error:', err);
+        alert('PDF yüklenirken hata oluştu.');
+      }
     } else {
-      alert('Desteklenen formatlar: .xlsx, .xls, .csv, .json');
+      alert('Desteklenen formatlar: .xlsx, .xls, .csv, .json, .pdf');
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -265,13 +319,13 @@ export default function TekliflerPage() {
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 shadow-sm">
           <h3 className="text-sm font-bold text-purple-800 mb-2">Geçmiş Teklifleri İçe Aktar</h3>
           <p className="text-xs text-purple-600 mb-3">
-            Excel (.xlsx, .xls), CSV veya JSON dosyası yükleyin. Excel/CSV başlıkları: Teklif No, Tarih, Proje, Müşteri, Telefon, Şehir, Adres, Hazırlayan, Toplam
+            Excel (.xlsx, .xls), CSV, JSON veya PDF dosyası yükleyin. PDF dosya adından teklif no ve proje adı otomatik çıkarılır.
           </p>
           <div className="flex items-center gap-3">
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls,.csv,.json"
+              accept=".xlsx,.xls,.csv,.json,.pdf"
               onChange={handleFileUpload}
               className="text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
             />
@@ -410,6 +464,9 @@ export default function TekliflerPage() {
                     <button onClick={() => handleStatusChange(p.id, 'viewed')} className="p-1.5 rounded-lg bg-yellow-50 text-yellow-600 hover:bg-yellow-100 transition" title="Görüntülendi"><Eye className="w-3.5 h-3.5" /></button>
                     <button onClick={() => handleStatusChange(p.id, 'approved')} className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition" title="Onaylandı"><CheckCircle className="w-3.5 h-3.5" /></button>
                     <button onClick={() => handleStatusChange(p.id, 'rejected')} className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Reddedildi"><XCircle className="w-3.5 h-3.5" /></button>
+                    {p.pdf_url && (
+                      <a href={p.pdf_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition" title="PDF İndir"><FileDown className="w-3.5 h-3.5" /></a>
+                    )}
                     <button onClick={() => duplicateProposal(p)} className="p-1.5 rounded-lg bg-purple-50 text-purple-500 hover:bg-purple-100 transition" title="Çoğalt"><Copy className="w-3.5 h-3.5" /></button>
                     <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 transition" title="Sil"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
@@ -420,7 +477,6 @@ export default function TekliflerPage() {
         </div>
       )}
 
-      
     </div>
   );
 }

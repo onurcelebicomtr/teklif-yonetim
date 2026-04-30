@@ -11,7 +11,7 @@ export default function MusterilerPage() {
   const params = useParams();
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
-  const { customers, addCustomer, removeCustomer, setCustomers } = useAppStore();
+  const { customers, addCustomer, updateCustomer, removeCustomer, setCustomers } = useAppStore();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -24,10 +24,10 @@ export default function MusterilerPage() {
       return c.name.toLowerCase().includes(s) || c.phone.toLowerCase().includes(s) || c.city.toLowerCase().includes(s);
     });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return alert('Müşteri adı giriniz.');
     if (editingId) {
-      setCustomers(customers.map((c) => c.id === editingId ? { ...c, ...form } : c));
+      await updateCustomer(editingId, form);
       setEditingId(null);
     } else {
       const newCustomer: Customer = {
@@ -38,7 +38,7 @@ export default function MusterilerPage() {
         city: form.city,
         address: form.address,
       };
-      addCustomer(newCustomer);
+      await addCustomer(newCustomer);
     }
     setForm({ name: '', phone: '', city: '', address: '' });
     setShowForm(false);

@@ -14,17 +14,19 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const fetchProposals = useAppStore((s) => s.fetchProposals);
+  const fetchAllData = useAppStore((s) => s.fetchAllData);
+  const hasHydrated = useAppStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    if (!['mutpro', 'guclumutfak'].includes(brandId)) {
+    if (!['mutpro', 'guclumutfak', 'grandmutfak'].includes(brandId)) {
       router.push('/');
     }
   }, [brandId, router]);
 
   useEffect(() => {
-    fetchProposals();
-  }, [fetchProposals]);
+    if (!hasHydrated) return;
+    fetchAllData();
+  }, [hasHydrated, fetchAllData]);
 
   const navItems = [
     { href: `/${brandId}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
@@ -109,7 +111,11 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
           <div className="w-8 lg:w-0" />
         </header>
         <div className="p-4 lg:p-6">
-          {children}
+          {hasHydrated ? children : (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-gray-400 text-sm animate-pulse">Veriler yükleniyor...</div>
+            </div>
+          )}
         </div>
       </main>
     </div>

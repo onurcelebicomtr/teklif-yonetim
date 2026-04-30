@@ -64,6 +64,7 @@ export interface Proposal {
   global_hide_prices: boolean;
   status: 'draft' | 'sent' | 'viewed' | 'approved' | 'rejected';
   total: number;
+  pdf_url?: string;
   created_at?: string;
   updated_at?: string;
 }
