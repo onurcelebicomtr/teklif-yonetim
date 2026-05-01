@@ -1291,7 +1291,9 @@ export default function YeniTeklifPage() {
                           if (nameChanged) return (
                             <button onClick={() => { updateProduct(nameChanged.id, { name: item.name }); }} className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500 text-white hover:bg-blue-600 transition" title="Ürün adını güncelle">✓ Kaydet</button>
                           );
-                          if (!matchedProduct) return null;
+                          if (!matchedProduct && item.name.trim()) return (
+                            <button onClick={() => { addProduct({ id: `prod-${Date.now()}-${Math.random().toString(36).substr(2,5)}`, brand_id: brandId, name: item.name, description: item.description || '', sku: item.sku || '', price: parseFloat(String(item.price)) || 0, cost: parseFloat(String(item.cost)) || 0, currency: item.input_currency || 'TRY', category: '', manufacturer: '', image: item.image || '', product_link: item.product_link || '' }); }} className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-500 text-white hover:bg-green-600 transition" title="Ürünü veritabanına kaydet">✓ Kaydet</button>
+                          );
                           return null;
                         })()}
                       </div>
