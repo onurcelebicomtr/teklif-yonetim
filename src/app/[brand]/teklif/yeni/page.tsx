@@ -18,7 +18,7 @@ export default function YeniTeklifPage() {
   const router = useRouter();
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
-  const { products, customers, proposals, addProposal, updateProposal, addProduct, removeProduct, setProducts, rates, packages, addPackage, removePackage, setPackages } = useAppStore();
+  const { products, customers, proposals, addProposal, updateProposal, addProduct, updateProduct, removeProduct, setProducts, rates, packages, addPackage, removePackage, setPackages } = useAppStore();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
   const editingProposal = editId ? proposals.find(p => p.id === editId) : null;
@@ -685,20 +685,19 @@ export default function YeniTeklifPage() {
   if (isPrintMode) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="no-print flex items-center gap-3 mb-4 p-3 bg-white rounded-xl border shadow-sm">
-          <button onClick={() => setIsPrintMode(false)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"><ArrowLeft className="w-4 h-4" /> Düzenlemeye Dön</button>
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Önizleme Modu</span>
+        <div className="no-print flex items-center gap-2 mb-4 p-3 bg-white rounded-xl border shadow-sm flex-wrap">
+          <button onClick={() => setIsPrintMode(false)} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 text-gray-600 hover:bg-gray-100 transition"><ArrowLeft className="w-4 h-4" /> Geri</button>
           <button
             onClick={() => setViewMode(viewMode === 'liste' ? 'katalog' : 'liste')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${viewMode === 'katalog' ? 'bg-green-600 text-white' : 'bg-gray-700 text-white'}`}
+            className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${viewMode === 'katalog' ? 'bg-green-600 text-white' : 'bg-gray-700 text-white'}`}
           >
-            {viewMode === 'liste' ? <><List className="w-3.5 h-3.5" /> Görünüm: Liste</> : <><LayoutGrid className="w-3.5 h-3.5" /> Görünüm: Katalog</>}
+            {viewMode === 'liste' ? <><List className="w-4 h-4" /> Liste</> : <><LayoutGrid className="w-4 h-4" /> Katalog</>}
           </button>
           <div className="flex-1" />
-          <button onClick={handlePrint} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Printer className="w-4 h-4" /> Yazdır</button>
-          <button onClick={handleDownloadPDF} disabled={!isFormValid} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid ? 'bg-red-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><FileDown className="w-4 h-4" /> PDF İndir</button>
-          <button onClick={handleDownloadJSON} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600"><FileDown className="w-4 h-4" /> JSON İndir</button>
-          <button onClick={handleSave} disabled={!isFormValid} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> Kaydet</button>
+          <button onClick={handlePrint} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-gray-800 text-white hover:bg-gray-900 transition"><Printer className="w-4 h-4" /> Yazdır</button>
+          <button onClick={handleDownloadPDF} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><FileDown className="w-4 h-4" /> PDF</button>
+          <button onClick={handleDownloadJSON} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-orange-500 text-white hover:bg-orange-600 transition"><FileDown className="w-4 h-4" /> JSON</button>
+          <button onClick={handleSave} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> Kaydet</button>
           {!isFormValid && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Hazırlayan alanını doldurun</span>}
         </div>
 
@@ -1284,7 +1283,18 @@ export default function YeniTeklifPage() {
                       </div>
                     </td>
                     <td className="py-3 px-2 max-w-xs">
-                      <input type="text" value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full font-bold text-sm text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none" />
+                      <div className="flex items-center gap-1">
+                        <input type="text" value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="flex-1 font-bold text-sm text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none" />
+                        {(() => {
+                          const matchedProduct = products.find(p => p.brand_id === brandId && ((item.sku && p.sku === item.sku) || p.name === item.name));
+                          const nameChanged = item.sku ? products.find(p => p.brand_id === brandId && p.sku === item.sku && p.name !== item.name) : null;
+                          if (nameChanged) return (
+                            <button onClick={() => { updateProduct(nameChanged.id, { name: item.name }); }} className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500 text-white hover:bg-blue-600 transition" title="Ürün adını güncelle">✓ Kaydet</button>
+                          );
+                          if (!matchedProduct) return null;
+                          return null;
+                        })()}
+                      </div>
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-gray-400">Ürün kodu:</span>
                         <input type="text" value={item.sku || ''} onChange={(e) => updateItem(item.id, 'sku', e.target.value)} className="text-[10px] text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-32" placeholder="SKU girin" />
