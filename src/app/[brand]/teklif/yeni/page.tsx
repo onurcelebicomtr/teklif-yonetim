@@ -39,6 +39,7 @@ export default function YeniTeklifPage() {
   const brandProducts = products.filter((p) => p.brand_id === brandId);
   const brandCustomers = customers.filter((c) => c.brand_id === brandId);
 
+  const [proposalTitle, setProposalTitle] = useState('FİYAT TEKLİFİ');
   const [proposalNo, setProposalNo] = useState(generateProposalNo(brandId));
   const [proposalDate, setProposalDate] = useState(getTodayDate());
   const [projectName, setProjectName] = useState('');
@@ -140,26 +141,7 @@ export default function YeniTeklifPage() {
     newEntry.total = newEntry.price * (1 - newEntry.item_discount / 100) * newEntry.quantity;
     setItems((prev) => [...prev, newEntry]);
     setNewItem({ name: '', description: '', price: '', cost: '', quantity: '1', image: '', product_link: '' });
-
-    // Otomatik ürün kataloğuna kaydet (aynı isim yoksa) — paket yüklemelerinde atla
-    if (!skipCatalog) {
-      const exists = products.some(p => p.brand_id === brandId && p.name.toLowerCase() === newEntry.name.toLowerCase());
-      if (!exists && newEntry.name.trim()) {
-        addProduct({
-          id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-          brand_id: brandId,
-          name: newEntry.name,
-          description: newEntry.description || '',
-          price: newEntry.price,
-          cost: newEntry.cost,
-          image: newEntry.image || '',
-          product_link: newEntry.product_link || '',
-          category: '',
-          currency: 'TRY',
-        });
-      }
-    }
-  }, [newItem, currency, products, brandId, addProduct]);
+  }, [newItem, currency]);
 
   const updateItem = (id: string, field: string, value: any) => {
     setItems((prev) =>
@@ -693,6 +675,10 @@ export default function YeniTeklifPage() {
           >
             {viewMode === 'liste' ? <><List className="w-4 h-4" /> Liste</> : <><LayoutGrid className="w-4 h-4" /> Katalog</>}
           </button>
+          <select value={proposalTitle} onChange={(e) => setProposalTitle(e.target.value)} className="h-9 px-3 rounded-lg text-sm font-bold border border-gray-300 bg-white text-gray-700">
+            <option value="FİYAT TEKLİFİ">Fiyat Teklifi</option>
+            <option value="PROFORMA FATURA">Proforma Fatura</option>
+          </select>
           <div className="flex-1" />
           <button onClick={handlePrint} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-gray-800 text-white hover:bg-gray-900 transition"><Printer className="w-4 h-4" /> Yazdır</button>
           <button onClick={handleDownloadPDF} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><FileDown className="w-4 h-4" /> PDF</button>
@@ -709,7 +695,7 @@ export default function YeniTeklifPage() {
                 <img src={brand.logo} alt={brand.name} style={{ maxHeight: '88px', maxWidth: '340px', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} crossOrigin="anonymous" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
               <div style={{ textAlign: 'right', paddingTop: 0, marginTop: 0 }}>
-                <h1 className="text-lg font-extrabold" style={{ margin: 0, padding: 0, lineHeight: 1, color: brand.accentColor }}>FİYAT TEKLİFİ</h1>
+                <h1 className="text-lg font-extrabold" style={{ margin: 0, padding: 0, lineHeight: 1, color: brand.accentColor }}>{proposalTitle}</h1>
                 <div className="text-xs text-gray-600" style={{ marginTop: '6px' }}>
                   <div><span className="font-bold">Teklif No:</span> {proposalNo}</div>
                   <div><span className="font-bold">Tarih:</span> {proposalDate}</div>
