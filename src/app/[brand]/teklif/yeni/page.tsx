@@ -52,7 +52,7 @@ export default function YeniTeklifPage() {
   const [inputCurrency] = useState('EUR'); // Ürünler EUR bazlı gelir
   const [discountValue, setDiscountValue] = useState(0);
   const [shippingCost, setShippingCost] = useState(0);
-  const [includeVAT] = useState(true); // KDV her zaman dahil mantığı
+  const [showVAT, setShowVAT] = useState(true);
   const [globalHidePrices, setGlobalHidePrices] = useState(false);
   const [preparedBy, setPreparedBy] = useState('');
   const [showIban, setShowIban] = useState(false);
@@ -487,7 +487,7 @@ export default function YeniTeklifPage() {
   const productItems = items.filter(i => i.type !== 'section');
   const subTotal = productItems.reduce((sum, i) => sum + i.total, 0); // KDV hariç ara toplam
   const discountedSubTotal = subTotal - discountValue;
-  const kdvTotal = discountedSubTotal * KDV_RATE;
+  const kdvTotal = showVAT ? discountedSubTotal * KDV_RATE : 0;
   const finalTotal = discountedSubTotal + kdvTotal + shippingCost; // Genel Toplam (KDV dahil + kargo)
   const totalCost = productItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
   const netProfit = discountedSubTotal - totalCost;
@@ -524,7 +524,7 @@ export default function YeniTeklifPage() {
           items,
           discount_value: discountValue,
           currency,
-          include_vat: includeVAT,
+          include_vat: showVAT,
           conditions,
           global_hide_prices: globalHidePrices,
           total: finalTotal,
@@ -544,7 +544,7 @@ export default function YeniTeklifPage() {
           items,
           discount_value: discountValue,
           currency,
-          include_vat: includeVAT,
+          include_vat: showVAT,
           conditions,
           global_hide_prices: globalHidePrices,
           status: 'draft',
@@ -593,7 +593,7 @@ export default function YeniTeklifPage() {
           items,
           discount_value: discountValue,
           currency,
-          include_vat: includeVAT,
+          include_vat: showVAT,
           conditions,
           global_hide_prices: globalHidePrices,
           status: 'sent',
@@ -614,7 +614,7 @@ export default function YeniTeklifPage() {
           items,
           discount_value: discountValue,
           currency,
-          include_vat: includeVAT,
+          include_vat: showVAT,
           conditions,
           global_hide_prices: globalHidePrices,
           status: 'sent',
@@ -642,7 +642,7 @@ export default function YeniTeklifPage() {
       items,
       discount_value: discountValue,
       currency,
-      include_vat: includeVAT,
+      include_vat: showVAT,
       conditions,
       global_hide_prices: globalHidePrices,
       status: 'sent',
@@ -831,7 +831,7 @@ export default function YeniTeklifPage() {
                 <div className="flex justify-between"><span className="text-gray-600">Ara Toplam (KDV Hariç):</span><span className="font-semibold">{formatCurrency(convertCurrency(subTotal), sym)}</span></div>
                 {discountValue > 0 && <div className="flex justify-between text-red-600"><span>İndirim:</span><span>-{formatCurrency(convertCurrency(discountValue), sym)}</span></div>}
                 {discountValue > 0 && <div className="flex justify-between border-t pt-1"><span className="text-gray-600">İndirimli Toplam:</span><span className="font-semibold">{formatCurrency(convertCurrency(discountedSubTotal), sym)}</span></div>}
-                <div className="flex justify-between"><span className="text-gray-600">KDV (%20):</span><span>{formatCurrency(convertCurrency(kdvTotal), sym)}</span></div>
+                {showVAT && <div className="flex justify-between"><span className="text-gray-600">KDV (%20):</span><span>{formatCurrency(convertCurrency(kdvTotal), sym)}</span></div>}
                 {shippingCost > 0 && <div className="flex justify-between"><span className="text-gray-600">Kargo / Taşıma Bedeli:</span><span>{formatCurrency(convertCurrency(shippingCost), sym)}</span></div>}
                 <div className="flex justify-between text-lg font-extrabold border-t-2 border-gray-800 pt-2 mt-2"><span>GENEL TOPLAM:</span><span>{formatCurrency(convertCurrency(finalTotal), sym)}</span></div>
                 <div className="text-right text-xs text-gray-500 italic">{numberToText(convertCurrency(finalTotal), currency)}</div>
@@ -1388,7 +1388,14 @@ export default function YeniTeklifPage() {
               </div>
             </div>
             {discountValue > 0 && <div className="flex justify-between text-sm border-t border-dashed pt-2"><span className="text-gray-600">İndirimli Ara Toplam:</span><span className="font-semibold">{formatCurrency(convertCurrency(discountedSubTotal), sym)}</span></div>}
-            <div className="flex justify-between text-sm"><span className="text-gray-600">KDV (%20):</span><span>{formatCurrency(convertCurrency(kdvTotal), sym)}</span></div>
+            <div className="flex justify-between text-sm items-center">
+              <span className="text-gray-600">KDV (%20):</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowVAT(true)} className={`px-2 py-0.5 rounded text-xs font-bold transition ${showVAT ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'}`}>Göster</button>
+                <button onClick={() => setShowVAT(false)} className={`px-2 py-0.5 rounded text-xs font-bold transition ${!showVAT ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}>Gizle</button>
+                <span className="font-semibold">{formatCurrency(convertCurrency(kdvTotal), sym)}</span>
+              </div>
+            </div>
             <div className="flex justify-between text-sm items-center">
               <span className="text-gray-600">Kargo / Taşıma Bedeli:</span>
               <div className="flex items-center gap-1">
