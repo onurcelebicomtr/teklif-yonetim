@@ -56,7 +56,7 @@ export default function YeniTeklifPage() {
   const [globalHidePrices, setGlobalHidePrices] = useState(false);
   const [preparedBy, setPreparedBy] = useState('');
   const [showIban, setShowIban] = useState(false);
-  const [selectedIban, setSelectedIban] = useState<number>(0); // 0=hepsi, 1=kurumsal, 2=bireysel
+  const [selectedIban, setSelectedIban] = useState<number>(0); // 0=hepsi, 1=kurumsal(güçlü reklam), 2=bireysel(buse), 3=kurumsal(güçlü inoks)
   const [conditions, setConditions] = useState(
     `- Bu teklif 3 gün süreyle geçerlidir.\n- Stok durumuna göre tarafınıza bilgilendirilmektedir.\n- Fiyatlarımıza KDV hariçtir (Listede hariç gösterilir, toplamda eklenir).`
   );
@@ -858,6 +858,13 @@ export default function YeniTeklifPage() {
                     <p className="text-gray-500">Yapı Kredi Bankası</p>
                   </div>
                 )}
+                {(selectedIban === 0 || selectedIban === 3) && (
+                  <div className="border-l-4 border-orange-500 pl-3">
+                    <p className="font-bold text-gray-800">GÜÇLÜ İNOKS ENDÜSTRİYEL MUTFAK SANAYİ VE TİCARET LİMİTED ŞİRKETİ</p>
+                    <p className="font-mono text-gray-600 mt-0.5">TR57 0001 2001 8160 0010 1006 91</p>
+                    <p className="text-gray-500">Halkbank</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1420,9 +1427,10 @@ export default function YeniTeklifPage() {
         </div>
         {showIban && (
           <div className="flex gap-3">
-            <button onClick={() => setSelectedIban(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${selectedIban === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Her İkisi</button>
+            <button onClick={() => setSelectedIban(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${selectedIban === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Tümü</button>
             <button onClick={() => setSelectedIban(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${selectedIban === 1 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Kurumsal (Güçlü Reklam)</button>
             <button onClick={() => setSelectedIban(2)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${selectedIban === 2 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Bireysel (Buse Turancı)</button>
+            <button onClick={() => setSelectedIban(3)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${selectedIban === 3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Kurumsal (Güçlü İnoks)</button>
           </div>
         )}
       </div>
