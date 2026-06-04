@@ -57,6 +57,8 @@ export default function YeniTeklifPage() {
   const [preparedBy, setPreparedBy] = useState('');
   const [showIban, setShowIban] = useState(false);
   const [selectedIban, setSelectedIban] = useState<number>(0); // 0=hepsi, 1=kurumsal(güçlü reklam), 2=bireysel(buse), 3=kurumsal(güçlü inoks)
+  const [installment, setInstallment] = useState<number>(0); // 0=taksit yok, 2-12=taksit sayısı
+  const [showInstallment, setShowInstallment] = useState(false);
   const [conditions, setConditions] = useState(
     `- Bu teklif 3 gün süreyle geçerlidir.\n- Stok durumuna göre tarafınıza bilgilendirilmektedir.\n- Fiyatlarımıza KDV hariçtir (Listede hariç gösterilir, toplamda eklenir).`
   );
@@ -488,7 +490,9 @@ export default function YeniTeklifPage() {
   const subTotal = productItems.reduce((sum, i) => sum + i.total, 0); // KDV hariç ara toplam
   const discountedSubTotal = subTotal - discountValue;
   const kdvTotal = showVAT ? discountedSubTotal * KDV_RATE : 0;
-  const finalTotal = discountedSubTotal + kdvTotal + shippingCost; // Genel Toplam (KDV dahil + kargo)
+  const installmentRate = installment > 0 ? (installment - 1) * 0.03 : 0; // her taksit için %3
+  const installmentExtra = (discountedSubTotal + kdvTotal + shippingCost) * installmentRate;
+  const finalTotal = discountedSubTotal + kdvTotal + shippingCost + installmentExtra; // Genel Toplam (KDV dahil + kargo + taksit farkı)
   const totalCost = productItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
   const netProfit = discountedSubTotal - totalCost;
   const profitMargin = discountedSubTotal > 0 ? (netProfit / discountedSubTotal) * 100 : 0;
@@ -833,6 +837,7 @@ export default function YeniTeklifPage() {
                 {discountValue > 0 && <div className="flex justify-between border-t pt-1"><span className="text-gray-600">İndirimli Toplam:</span><span className="font-semibold">{formatCurrency(convertCurrency(discountedSubTotal), sym)}</span></div>}
                 {showVAT && <div className="flex justify-between"><span className="text-gray-600">KDV (%20):</span><span>{formatCurrency(convertCurrency(kdvTotal), sym)}</span></div>}
                 {shippingCost > 0 && <div className="flex justify-between"><span className="text-gray-600">Kargo / Taşıma Bedeli:</span><span>{formatCurrency(convertCurrency(shippingCost), sym)}</span></div>}
+                {installment > 0 && <div className="flex justify-between text-orange-600"><span>Taksit Farkı ({installment} taksit, %{(installment-1)*3}):</span><span>+{formatCurrency(convertCurrency(installmentExtra), sym)}</span></div>}
                 <div className="flex justify-between text-lg font-extrabold border-t-2 border-gray-800 pt-2 mt-2"><span>GENEL TOPLAM:</span><span>{formatCurrency(convertCurrency(finalTotal), sym)}</span></div>
                 <div className="text-right text-xs text-gray-500 italic">{numberToText(convertCurrency(finalTotal), currency)}</div>
               </div>
@@ -1410,11 +1415,38 @@ export default function YeniTeklifPage() {
                 <span className="text-sm">{formatCurrency(convertCurrency(shippingCost), sym)}</span>
               </div>
             </div>
+            {installment > 0 && (
+              <div className="flex justify-between text-sm text-orange-600 items-center">
+                <span>Taksit Farkı ({installment} taksit, %{((installment - 1) * 3)}):</span>
+                <span className="font-semibold">+{formatCurrency(convertCurrency(installmentExtra), sym)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-xl font-extrabold text-gray-900 border-t-2 border-gray-800 pt-3 mt-2"><span>GENEL TOPLAM:</span><span>{formatCurrency(convertCurrency(finalTotal), sym)}</span></div>
             <div className="text-right text-xs text-gray-500 italic">{numberToText(convertCurrency(finalTotal), currency)}</div>
           </div>
         </div>
       )}
+
+      {/* Taksit / Vade Seçimi */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-700 uppercase">Taksitli Ödeme (Kredi Kartı)</h3>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={showInstallment} onChange={(e) => { setShowInstallment(e.target.checked); if (!e.target.checked) setInstallment(0); }} className="accent-blue-600" />
+            <label className="text-xs font-bold text-gray-500">Teklifte Göster</label>
+          </div>
+        </div>
+        {showInstallment && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button onClick={() => setInstallment(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${installment === 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Peşin</button>
+            {[2,3,4,5,6,7,8,9,10,11,12].map(n => (
+              <button key={n} onClick={() => setInstallment(n)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${installment === n ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                {n} Taksit <span className="text-[10px] opacity-75">(%{(n-1)*3})</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* IBAN / Ödeme Bilgileri Ayarı */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
