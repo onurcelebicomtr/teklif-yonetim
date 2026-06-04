@@ -1254,8 +1254,8 @@ export default function YeniTeklifPage() {
               {(() => { let pIdx = 0; return items.map((item, idx) => {
                 if (item.type === 'section') {
                   return (
-                    <tr key={item.id} draggable onDragStart={() => handleDragStart(idx)} onDragEnter={() => handleDragEnter(idx)} onDragEnd={handleDrop} onDragOver={(e) => e.preventDefault()} className="bg-gray-100 border-b border-gray-200 cursor-move">
-                      <td colSpan={8} className="py-2 px-4 relative">
+                    <tr key={item.id} onDragEnter={() => handleDragEnter(idx)} onDragOver={(e) => e.preventDefault()} className="bg-gray-100 border-b border-gray-200">
+                      <td colSpan={8} className="py-2 px-4 relative cursor-move" draggable onDragStart={() => handleDragStart(idx)} onDragEnd={handleDrop}>
                         <input type="text" value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full text-center font-bold text-sm uppercase tracking-wide text-gray-700 bg-transparent outline-none" />
                         <button onClick={() => removeItem(item.id)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-red-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                       </td>
@@ -1269,8 +1269,8 @@ export default function YeniTeklifPage() {
                 const itemProfit = (item.price - item.cost) * item.quantity * (1 - item.item_discount / 100);
                 const itemProfitPercent = item.price > 0 ? ((item.price - item.cost) / item.price) * 100 : 0;
                 return (
-                  <tr key={item.id} draggable onDragStart={() => handleDragStart(idx)} onDragEnter={() => handleDragEnter(idx)} onDragEnd={handleDrop} onDragOver={(e) => e.preventDefault()} className={`border-b border-gray-100 hover:bg-blue-50/30 transition ${item.shipped ? 'opacity-40 line-through' : ''}`}>
-                    <td className="py-3 px-2 cursor-move text-center">
+                  <tr key={item.id} onDragEnter={() => handleDragEnter(idx)} onDragOver={(e) => e.preventDefault()} className={`border-b border-gray-100 hover:bg-blue-50/30 transition ${item.shipped ? 'opacity-40 line-through' : ''}`}>
+                    <td className="py-3 px-2 cursor-move text-center" draggable onDragStart={(e) => { e.stopPropagation(); handleDragStart(idx); }} onDragEnd={handleDrop}>
                       <GripVertical className="w-3.5 h-3.5 text-gray-300 inline" />
                       <div className="text-[10px] text-gray-400 mt-0.5">{pIdx}</div>
                     </td>
