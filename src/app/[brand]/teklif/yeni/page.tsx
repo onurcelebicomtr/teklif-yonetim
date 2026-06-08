@@ -76,6 +76,10 @@ export default function YeniTeklifPage() {
   // New product form (kataloga kaydetme)
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', category: '', price: '', cost: '', image: '', product_link: '', sku: '' });
+  const [newPriceList, setNewPriceList] = useState(''); // liste fiyatı (fiyat için)
+  const [newPriceDiscount, setNewPriceDiscount] = useState(''); // iskonto % (fiyat için)
+  const [newCostList, setNewCostList] = useState(''); // liste fiyatı (maliyet için)
+  const [newCostDiscount, setNewCostDiscount] = useState(''); // iskonto % (maliyet için)
   const [newProductCurrency, setNewProductCurrency] = useState<'EUR' | 'TRY' | 'USD' | 'GBP'>('EUR');
 
   // Livesearch state for product name input
@@ -288,6 +292,7 @@ export default function YeniTeklifPage() {
     const costInTry = convertToTry(cost, newProductCurrency);
     addItem({ name: product.name, description: '', sku: product.sku, price: priceInTry, cost: costInTry, image: product.image, product_link: product.product_link, quantity: 1 });
     setNewProduct({ name: '', category: '', price: '', cost: '', image: '', product_link: '', sku: '' });
+    setNewPriceList(''); setNewPriceDiscount(''); setNewCostList(''); setNewCostDiscount('');
     setShowNewProductForm(false);
   };
 
@@ -311,6 +316,7 @@ export default function YeniTeklifPage() {
     };
     addProduct(product);
     setNewProduct({ name: '', category: '', price: '', cost: '', image: '', product_link: '', sku: '' });
+    setNewPriceList(''); setNewPriceDiscount(''); setNewCostList(''); setNewCostDiscount('');
     alert('Ürün kataloga kaydedildi!');
   };
 
@@ -1202,11 +1208,25 @@ export default function YeniTeklifPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Fiyat ({getCurrencySymbol(newProductCurrency)} {newProductCurrency})</label>
-                <input type="number" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="0" />
+                <div className="flex gap-1 items-center">
+                  <input type="number" value={newProduct.price} onChange={(e) => { setNewProduct({ ...newProduct, price: e.target.value }); setNewPriceList(''); setNewPriceDiscount(''); }} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="0" />
+                </div>
+                <div className="flex gap-1 mt-1 items-center">
+                  <input type="number" value={newPriceList} onChange={(e) => { const liste = e.target.value; setNewPriceList(liste); const l = parseFloat(liste) || 0; const d = parseFloat(newPriceDiscount) || 0; setNewProduct({ ...newProduct, price: l > 0 ? (l * (1 - d / 100)).toFixed(2) : '' }); }} className="flex-1 p-1.5 border border-blue-200 rounded text-xs bg-blue-50" placeholder="Liste fiyatı" />
+                  <input type="number" value={newPriceDiscount} onChange={(e) => { const disc = e.target.value; setNewPriceDiscount(disc); const l = parseFloat(newPriceList) || 0; const d = parseFloat(disc) || 0; setNewProduct({ ...newProduct, price: l > 0 ? (l * (1 - d / 100)).toFixed(2) : '' }); }} className="w-16 p-1.5 border border-blue-200 rounded text-xs bg-blue-50 text-center" placeholder="%" />
+                  <span className="text-xs text-blue-500 font-bold">%</span>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Maliyet ({getCurrencySymbol(newProductCurrency)} {newProductCurrency})</label>
-                <input type="number" value={newProduct.cost} onChange={(e) => setNewProduct({ ...newProduct, cost: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="0" />
+                <div className="flex gap-1 items-center">
+                  <input type="number" value={newProduct.cost} onChange={(e) => { setNewProduct({ ...newProduct, cost: e.target.value }); setNewCostList(''); setNewCostDiscount(''); }} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="0" />
+                </div>
+                <div className="flex gap-1 mt-1 items-center">
+                  <input type="number" value={newCostList} onChange={(e) => { const liste = e.target.value; setNewCostList(liste); const l = parseFloat(liste) || 0; const d = parseFloat(newCostDiscount) || 0; setNewProduct({ ...newProduct, cost: l > 0 ? (l * (1 - d / 100)).toFixed(2) : '' }); }} className="flex-1 p-1.5 border border-orange-200 rounded text-xs bg-orange-50" placeholder="Liste fiyatı" />
+                  <input type="number" value={newCostDiscount} onChange={(e) => { const disc = e.target.value; setNewCostDiscount(disc); const l = parseFloat(newCostList) || 0; const d = parseFloat(disc) || 0; setNewProduct({ ...newProduct, cost: l > 0 ? (l * (1 - d / 100)).toFixed(2) : '' }); }} className="w-16 p-1.5 border border-orange-200 rounded text-xs bg-orange-50 text-center" placeholder="%" />
+                  <span className="text-xs text-orange-500 font-bold">%</span>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Görsel URL</label>
