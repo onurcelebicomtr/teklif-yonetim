@@ -28,6 +28,15 @@ export default function YeniTeklifPage() {
   const [eurRate, setEurRate] = useState(rates.eur || 41);
   const [usdRate, setUsdRate] = useState(rates.usd || 38);
   const [gbpRate, setGbpRate] = useState(rates.gbp || 48);
+  // Referans kur: ürünler sisteme girildiğindeki EUR kuru (TRY fiyatlar bu kurla EUR'a çevrilir)
+  const [refEurRate, setRefEurRate] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('refEurRate');
+      return saved ? parseFloat(saved) : 38;
+    }
+    return 38;
+  });
+  useEffect(() => { localStorage.setItem('refEurRate', String(refEurRate)); }, [refEurRate]);
 
   // Sync rates from store when they update
   useEffect(() => {
@@ -209,7 +218,15 @@ export default function YeniTeklifPage() {
   // Ürün fiyatını TRY'ye çevir (ürün currency'sine göre)
   const productPriceToTry = (amount: number, productCurrency?: string) => {
     const cur = (productCurrency || 'TRY').toUpperCase();
-    if (cur === 'TRY') return amount;
+    if (cur === 'TRY') {
+      // TRY fiyatı referans kurla EUR'a çevir, sonra güncel kurla TL'ye çevir
+      // Böylece kur değişince fiyatlar otomatik güncellenir
+      if (refEurRate > 0) {
+        const eurPrice = amount / refEurRate;
+        return Math.round(eurPrice * eurRate * 100) / 100;
+      }
+      return amount;
+    }
     if (cur === 'EUR') return Math.round(amount * eurRate * 100) / 100;
     if (cur === 'USD') return Math.round(amount * usdRate * 100) / 100;
     if (cur === 'GBP') return Math.round(amount * gbpRate * 100) / 100;
@@ -1045,6 +1062,12 @@ export default function YeniTeklifPage() {
             <span className="text-[10px] text-gray-500">£1=</span>
             <input type="number" step="0.01" value={gbpRate} onChange={(e) => setGbpRate(parseFloat(e.target.value) || 0)} className="w-16 text-xs font-bold text-center border border-blue-300 rounded px-1 py-0.5 bg-white" />
             <span className="text-[10px] text-gray-500">₺</span>
+          </div>
+          <div className="border-l border-blue-300 pl-3 flex items-center gap-1">
+            <span className="text-[10px] font-bold text-orange-600">Ref €=</span>
+            <input type="number" step="0.01" value={refEurRate} onChange={(e) => setRefEurRate(parseFloat(e.target.value) || 0)} className="w-16 text-xs font-bold text-center border border-orange-300 rounded px-1 py-0.5 bg-orange-50" />
+            <span className="text-[10px] text-gray-500">₺</span>
+            <span className="text-[9px] text-orange-500 ml-1" title="Ürünler sisteme girildiğindeki EUR kuru. Bu değeri değiştirerek fiyatları kur farkına göre otomatik ayarlayabilirsiniz.">ℹ️</span>
           </div>
         </div>
       </div>
