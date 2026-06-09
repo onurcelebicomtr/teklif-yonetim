@@ -768,8 +768,8 @@ export default function YeniTeklifPage() {
                       <td className="py-5 px-3 text-center text-gray-500 font-medium text-sm">{pIdx}</td>
                       {!isCompactMode && (
                         <td className="py-4 px-3">
-                          <div className="w-20 h-20 border rounded bg-white overflow-hidden">
-                            {item.image ? <img src={item.image} className="w-full h-full object-contain" crossOrigin="anonymous" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : <div className="w-full h-full bg-gray-100" />}
+                          <div style={{ width: '80px', height: '80px', border: '1px solid #e5e7eb', borderRadius: '4px', backgroundColor: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.image ? <img src={item.image} crossOrigin="anonymous" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', width: 'auto', height: 'auto' }} /> : <div style={{ width: '100%', height: '100%', backgroundColor: '#f3f4f6' }} />}
                           </div>
                         </td>
                       )}
@@ -810,8 +810,8 @@ export default function YeniTeklifPage() {
                 const isHidden = globalHidePrices || item.hide_price;
                 return (
                   <div key={item.id} className={`flex gap-5 p-4 rounded-xl border ${item.shipped ? 'opacity-50 line-through' : ''}`} style={{ borderColor: brand.tableBorderHex, pageBreakInside: 'avoid' }}>
-                    <div className="w-36 h-36 flex-shrink-0 border rounded-lg bg-white overflow-hidden">
-                      {item.image ? <img src={item.image} className="w-full h-full object-contain" crossOrigin="anonymous" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} /> : <div className="w-full h-full bg-gray-100" />}
+                    <div style={{ width: '144px', height: '144px', flexShrink: 0, border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.image ? <img src={item.image} crossOrigin="anonymous" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', width: 'auto', height: 'auto' }} /> : <div style={{ width: '100%', height: '100%', backgroundColor: '#f3f4f6' }} />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-900 text-base">{item.name}</div>
