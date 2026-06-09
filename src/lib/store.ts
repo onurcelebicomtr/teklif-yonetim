@@ -162,10 +162,9 @@ export const useAppStore = create<AppState>()(
         try {
           const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
           if (error) { console.error('Supabase fetchProducts error:', error); return; }
-          if (data && data.length > 0) {
-            const dbIds = new Set(data.map((p: any) => p.id));
-            const localOnly = get().products.filter((p) => !dbIds.has(p.id));
-            set({ products: [...data as Product[], ...localOnly] });
+          if (data) {
+            // Supabase = tek kaynak (source of truth)
+            set({ products: data as Product[] });
           }
         } catch (e) { console.error('Supabase fetchProducts network error:', e); }
       },
@@ -195,10 +194,9 @@ export const useAppStore = create<AppState>()(
         try {
           const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
           if (error) { console.error('Supabase fetchCustomers error:', error); return; }
-          if (data && data.length > 0) {
-            const dbIds = new Set(data.map((c: any) => c.id));
-            const localOnly = get().customers.filter((c) => !dbIds.has(c.id));
-            set({ customers: [...data as Customer[], ...localOnly] });
+          if (data) {
+            // Supabase = tek kaynak (source of truth)
+            set({ customers: data as Customer[] });
           }
         } catch (e) { console.error('Supabase fetchCustomers network error:', e); }
       },
@@ -277,10 +275,8 @@ export const useAppStore = create<AppState>()(
             status: row.status || 'draft',
             total: row.total || 0,
           }));
-          // Local teklifleri koru: Supabase'de olmayan local teklifleri birleştir
-          const supabaseIds = new Set(supabaseProposals.map((p) => p.id));
-          const localOnly = get().proposals.filter((p) => !supabaseIds.has(p.id));
-          set({ proposals: [...supabaseProposals, ...localOnly] });
+          // Supabase = tek kaynak (source of truth)
+          set({ proposals: supabaseProposals });
         }
         } catch (e) { console.error('Supabase fetchProposals network error:', e); }
       },
@@ -310,11 +306,10 @@ export const useAppStore = create<AppState>()(
         try {
           const { data, error } = await supabase.from('packages').select('*').order('created_at', { ascending: false });
           if (error) { console.error('Supabase fetchPackages error:', error); return; }
-          if (data && data.length > 0) {
+          if (data) {
+            // Supabase = tek kaynak (source of truth)
             const dbPkgs: PackageTemplate[] = data.map((row: any) => ({ id: row.id, brand_id: row.brand_id, name: row.name, items: row.items || [] }));
-            const dbIds = new Set(dbPkgs.map((p) => p.id));
-            const localOnly = get().packages.filter((p) => !dbIds.has(p.id));
-            set({ packages: [...dbPkgs, ...localOnly] });
+            set({ packages: dbPkgs });
           }
         } catch (e) { console.error('Supabase fetchPackages network error:', e); }
       },

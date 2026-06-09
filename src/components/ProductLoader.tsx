@@ -8,11 +8,13 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 const BRAND_FILES: Record<string, string> = {
   guclumutfak: '/products-guclumutfak.json',
   mutpro: '/products-mutpro.json',
+  inoks: '/products-inoks.json',
 };
 
 const PACKAGE_FILES: Record<string, string> = {
   guclumutfak: '/packages-guclumutfak.json',
   mutpro: '/packages-mutpro.json',
+  inoks: '/packages-inoks.json',
 };
 
 export default function ProductLoader() {
@@ -60,11 +62,10 @@ export default function ProductLoader() {
           else console.log(`✅ ${newJsonProducts.length} yeni ürün Supabase'e aktarıldı.`);
         }
 
-        // 4. Tüm ürünleri birleştir: DB + JSON (DB source of truth)
-        const allIds = new Set(Array.from(dbIds).concat(newJsonProducts.map((p) => p.id)));
-        const localOnly = useAppStore.getState().products.filter((p) => !allIds.has(p.id));
+        // 4. Supabase = tek kaynak (source of truth). Local veri karıştırılmaz.
         const jsonFresh = jsonProducts.filter((p) => !dbIds.has(p.id));
-        setProducts([...dbList, ...jsonFresh, ...localOnly]);
+        setProducts([...dbList, ...jsonFresh]);
+        console.log(`✅ Ürünler Supabase'den yüklendi: ${dbList.length + jsonFresh.length} ürün`);
       } else {
         // Supabase yoksa sadece JSON + local
         if (jsonProducts.length > 0) {
@@ -122,7 +123,7 @@ export default function ProductLoader() {
         const dbList = (dbPackages || []) as any[];
         const dbIds = new Set(dbList.map((p) => p.id));
 
-        // JSON'daki paketleri Supabase'e seed et
+        // JSON'daki paketleri Supabase'e seed et (sadece Supabase'de hiç yoksa)
         const newJsonPkgs = jsonPackages.filter((p) => !dbIds.has(p.id));
         if (newJsonPkgs.length > 0) {
           const seedData = newJsonPkgs.map((p) => ({ id: p.id, brand_id: p.brand_id, name: p.name, items: p.items || [] }));
@@ -131,11 +132,11 @@ export default function ProductLoader() {
           else console.log(`✅ ${newJsonPkgs.length} yeni paket Supabase'e aktarıldı.`);
         }
 
-        const allIds = new Set(Array.from(dbIds).concat(newJsonPkgs.map((p) => p.id)));
-        const localOnly = useAppStore.getState().packages.filter((p) => !allIds.has(p.id));
+        // Supabase = tek kaynak (source of truth). Local veri karıştırılmaz.
         const dbPkgs = dbList.map((row: any) => ({ id: row.id, brand_id: row.brand_id, name: row.name, items: row.items || [] }));
-        const jsonFresh = jsonPackages.filter((p) => !dbIds.has(p.id));
-        setPackages([...dbPkgs, ...jsonFresh, ...localOnly]);
+        const seedPkgs = newJsonPkgs.map((p: any) => ({ id: p.id, brand_id: p.brand_id, name: p.name, items: p.items || [] }));
+        setPackages([...dbPkgs, ...seedPkgs]);
+        console.log(`✅ Paketler Supabase'den yüklendi: ${dbPkgs.length + seedPkgs.length} paket`);
       } else {
         if (jsonPackages.length > 0) {
           const currentPackages = useAppStore.getState().packages;
