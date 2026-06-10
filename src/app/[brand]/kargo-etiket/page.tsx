@@ -4,7 +4,26 @@ import { useParams } from 'next/navigation';
 import { getBrand } from '@/lib/brands';
 import { useAppStore } from '@/lib/store';
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { FileDown, Printer, RotateCcw, Shuffle, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileDown, Printer, RotateCcw, Shuffle, Search, ChevronDown, ChevronUp, Save, Trash2, Clock } from 'lucide-react';
+
+// Kayıtlı etiket tipi
+interface SavedLabel {
+  id: string;
+  brandId: string;
+  recipientName: string;
+  phone: string;
+  address: string;
+  city: string;
+  product: string;
+  quantity: string;
+  desi: string;
+  note: string;
+  tracking: string;
+  payment: string;
+  ambar: string;
+  labelDate: string;
+  savedAt: string;
+}
 
 export default function KargoEtiketPage() {
   const params = useParams();
@@ -27,10 +46,61 @@ export default function KargoEtiketPage() {
   const [quantity, setQuantity] = useState('1');
   const [desi, setDesi] = useState('');
   const [note, setNote] = useState('');
+  const [labelDate, setLabelDate] = useState(new Date().toLocaleDateString('tr-TR'));
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showForm, setShowForm] = useState(true);
+
+  // Kayıtlı etiketler
+  const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
+
+  // localStorage'dan kayıtlı etiketleri yükle
+  useEffect(() => {
+    const saved = localStorage.getItem(`kargo-etiketler-${brandId}`);
+    if (saved) setSavedLabels(JSON.parse(saved));
+  }, [brandId]);
+
+  const saveLabelsToStorage = (labels: SavedLabel[]) => {
+    localStorage.setItem(`kargo-etiketler-${brandId}`, JSON.stringify(labels));
+    setSavedLabels(labels);
+  };
+
+  // Etiketi kaydet
+  const saveLabel = () => {
+    if (!recipientName.trim()) return alert('Kaydetmek için alıcı adı gerekli.');
+    const label: SavedLabel = {
+      id: `label-${Date.now()}`,
+      brandId,
+      recipientName, phone, address, city, product, quantity, desi, note, tracking, payment, ambar, labelDate,
+      savedAt: new Date().toLocaleString('tr-TR'),
+    };
+    saveLabelsToStorage([label, ...savedLabels]);
+    alert('Etiket kaydedildi!');
+  };
+
+  // Kayıtlı etiketi yükle
+  const loadLabel = (label: SavedLabel) => {
+    setRecipientName(label.recipientName);
+    setPhone(label.phone);
+    setAddress(label.address);
+    setCity(label.city);
+    setProduct(label.product);
+    setQuantity(label.quantity);
+    setDesi(label.desi);
+    setNote(label.note);
+    setTracking(label.tracking);
+    setPayment(label.payment);
+    setAmbar(label.ambar);
+    setLabelDate(label.labelDate);
+    setShowSaved(false);
+  };
+
+  // Kayıtlı etiketi sil
+  const deleteLabel = (id: string) => {
+    saveLabelsToStorage(savedLabels.filter(l => l.id !== id));
+  };
 
   // Müşteri filtreleme
   const filteredCustomers = useMemo(() => {
@@ -49,9 +119,6 @@ export default function KargoEtiketPage() {
     setCustomerSearch('');
     setShowCustomerDropdown(false);
   };
-
-  // Bugünün tarihi
-  const today = new Date().toLocaleDateString('tr-TR');
 
   // Rastgele takip no
   const generateTracking = () => {
@@ -92,6 +159,7 @@ export default function KargoEtiketPage() {
     setQuantity('1');
     setDesi('');
     setNote('');
+    setLabelDate(new Date().toLocaleDateString('tr-TR'));
     setCustomerSearch('');
     generateTracking();
   };
@@ -160,15 +228,25 @@ export default function KargoEtiketPage() {
   };
   const sender = senderInfo[brandId as keyof typeof senderInfo] || senderInfo.mutpro;
 
+  // Font ailesi - PDF'de de düzgün görünsün diye sistem fontları
+  const fontStack = 'Arial, Helvetica, sans-serif';
+  const monoFont = 'Courier New, Courier, monospace';
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kargo Etiketi</h1>
           <p className="text-sm text-gray-500">{brand.fullName} - Kargo etiketi oluşturun ve PDF olarak indirin</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setShowSaved(!showSaved)} className="px-3 py-2 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 relative">
+            <Clock className="w-4 h-4" /> Kayıtlı ({savedLabels.filter(l => l.brandId === brandId).length})
+          </button>
+          <button onClick={saveLabel} className="px-3 py-2 rounded-lg text-sm font-bold border border-blue-300 text-blue-600 hover:bg-blue-50 flex items-center gap-1.5">
+            <Save className="w-4 h-4" /> Kaydet
+          </button>
           <button onClick={clearForm} className="px-3 py-2 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
             <RotateCcw className="w-4 h-4" /> Temizle
           </button>
@@ -180,6 +258,30 @@ export default function KargoEtiketPage() {
           </button>
         </div>
       </div>
+
+      {/* Kayıtlı Etiketler */}
+      {showSaved && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">Kayıtlı Etiketler</h3>
+          {savedLabels.filter(l => l.brandId === brandId).length === 0 ? (
+            <p className="text-sm text-gray-400 italic">Henüz kayıtlı etiket yok.</p>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {savedLabels.filter(l => l.brandId === brandId).map(label => (
+                <div key={label.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition">
+                  <button onClick={() => loadLabel(label)} className="flex-1 text-left">
+                    <div className="font-bold text-sm text-gray-900">{label.recipientName}</div>
+                    <div className="text-xs text-gray-500">{label.city} • {label.tracking} • {label.savedAt}</div>
+                  </button>
+                  <button onClick={() => deleteLabel(label.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-6">
         {/* SOL: Form */}
@@ -233,6 +335,10 @@ export default function KargoEtiketPage() {
                   </select>
                 </div>
                 <div>
+                  <label className="text-[10px] text-gray-400 mb-0.5 block">Tarih</label>
+                  <input type="text" value={labelDate} onChange={(e) => setLabelDate(e.target.value)} placeholder="GG.AA.YYYY" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div>
                   <label className="text-[10px] text-gray-400 mb-0.5 block">Gönderici Ambarı (Opsiyonel)</label>
                   <input type="text" value={ambar} onChange={(e) => setAmbar(e.target.value)} placeholder="Örn: GÜVEN AMBARI" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
@@ -274,7 +380,7 @@ export default function KargoEtiketPage() {
         <div className="flex-1 flex justify-center">
           <div className="origin-top" style={{ transform: 'scale(0.75)' }}>
             {/* A4 Yatay Kağıt */}
-            <div ref={labelRef} style={{ width: '297mm', height: '208mm', background: 'white', padding: '5mm', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+            <div ref={labelRef} style={{ width: '297mm', height: '208mm', background: 'white', padding: '5mm', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', fontFamily: fontStack }}>
               <div style={{ border: '3px solid #000', height: '100%', display: 'flex', flexDirection: 'column', background: 'white' }}>
 
                 {/* 1. SATIR: Gönderici */}
@@ -284,16 +390,16 @@ export default function KargoEtiketPage() {
                     <img src={sender.logo} crossOrigin="anonymous" alt={sender.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                   </div>
                   {/* Gönderici Bilgi */}
-                  <div style={{ width: '66.67%', padding: '4mm', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#f9fafb', position: 'relative' }}>
+                  <div style={{ width: '66.67%', padding: '4mm', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#f9fafb', position: 'relative', fontFamily: fontStack }}>
                     {/* Barkod */}
                     <div style={{ position: 'absolute', top: '2mm', right: '2mm' }}>
                       <svg id="barcode-svg"></svg>
                     </div>
 
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1mm', marginTop: '4mm' }}>GÖNDERİCİ / SENDER</div>
-                    <div style={{ fontSize: '24px', fontWeight: 900, color: '#111827', marginBottom: '1mm' }}>{sender.name}</div>
-                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: 1.4 }}>
-                      <div><strong>Adres:</strong> {sender.address1}</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1mm', marginTop: '4mm', fontFamily: fontStack }}>GÖNDERİCİ / SENDER</div>
+                    <div style={{ fontSize: '24px', fontWeight: 900, color: '#111827', marginBottom: '1mm', fontFamily: fontStack }}>{sender.name}</div>
+                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: 1.4, fontFamily: fontStack }}>
+                      <div><b>Adres:</b> {sender.address1}</div>
                       <div>{sender.address2}</div>
                       <div style={{ marginTop: '2mm', display: 'flex', gap: '16px', fontSize: '11px', fontWeight: 600, color: '#4b5563' }}>
                         <span>{sender.email}</span>
@@ -303,7 +409,7 @@ export default function KargoEtiketPage() {
                     </div>
                     {ambar && (
                       <div style={{ marginTop: '2mm' }}>
-                        <span style={{ background: '#1f2937', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
+                        <span style={{ background: '#1f2937', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', fontFamily: fontStack }}>
                           SEVK AMBARI: <span style={{ color: '#facc15', fontSize: '13px', textTransform: 'uppercase' }}>{ambar.toLocaleUpperCase('tr-TR')}</span>
                         </span>
                       </div>
@@ -312,28 +418,30 @@ export default function KargoEtiketPage() {
                 </div>
 
                 {/* 2. SATIR: Alıcı */}
-                <div style={{ flexGrow: 1, borderBottom: '2px solid #000', padding: '8mm', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  {/* Sağ üst: Etiket + Ödeme */}
-                  <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', zIndex: 10 }}>
-                    <div style={{ background: '#000', color: '#fff', padding: '2px 12px', fontSize: '10px', fontWeight: 700, borderBottomLeftRadius: '8px' }}>ALICI / CONSIGNEE</div>
-                    <div style={{ background: '#000', color: '#fff', padding: '6px 12px', fontSize: '13px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '4px solid #fff', borderBottom: '4px solid #fff' }}>
+                <div style={{ flexGrow: 1, borderBottom: '2px solid #000', padding: '8mm', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontFamily: fontStack }}>
+                  {/* Sağ üst: Tek şerit halinde ALICI + Ödeme */}
+                  <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'stretch' }}>
+                    <div style={{ background: '#000', color: '#fff', padding: '8px 14px', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', fontFamily: fontStack }}>
+                      ALICI / CONSIGNEE
+                    </div>
+                    <div style={{ background: sender.accentColor, color: '#fff', padding: '8px 18px', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', fontFamily: fontStack }}>
                       {payment}
                     </div>
                   </div>
 
                   {/* İsim */}
-                  <div style={{ fontSize: recipientName.length > 30 ? '36px' : '48px', fontWeight: 900, color: recipientName ? '#111827' : '#d1d5db', letterSpacing: '-0.5px', lineHeight: 1, paddingRight: '140px', wordBreak: 'break-word' }}>
+                  <div style={{ fontSize: recipientName.length > 30 ? '36px' : '48px', fontWeight: 900, color: recipientName ? '#111827' : '#d1d5db', letterSpacing: '-0.5px', lineHeight: 1, paddingRight: '280px', wordBreak: 'break-word', fontFamily: fontStack }}>
                     {recipientName ? recipientName.toLocaleUpperCase('tr-TR') : 'ALICI İSMİ'}
                   </div>
 
                   {/* Adres */}
                   <div style={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', marginTop: '2mm', overflow: 'hidden' }}>
                     <div style={{ width: '100%' }}>
-                      <div style={{ fontSize: address.length > 100 ? '18px' : '22px', color: address ? '#1f2937' : '#d1d5db', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                      <div style={{ fontSize: address.length > 100 ? '18px' : '22px', color: address ? '#1f2937' : '#d1d5db', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-word', fontFamily: fontStack }}>
                         {address ? address.toLocaleUpperCase('tr-TR') : 'Teslimat adresi buraya gelecek...'}
                       </div>
                       {city && (
-                        <div style={{ fontSize: '28px', fontWeight: 900, color: '#111827', marginTop: '2mm', textTransform: 'uppercase' }}>
+                        <div style={{ fontSize: '28px', fontWeight: 900, color: '#111827', marginTop: '2mm', textTransform: 'uppercase', fontFamily: fontStack }}>
                           {city.toLocaleUpperCase('tr-TR')}
                         </div>
                       )}
@@ -341,34 +449,34 @@ export default function KargoEtiketPage() {
                   </div>
 
                   {/* Telefon */}
-                  <div style={{ marginTop: '2mm', display: 'flex', alignItems: 'center', borderTop: '1px solid #f3f4f6', paddingTop: '2mm' }}>
-                    <span style={{ color: '#6b7280', fontWeight: 700, marginRight: '16px', fontSize: '14px' }}>İLETİŞİM:</span>
-                    <span style={{ fontSize: '22px', fontFamily: 'monospace', color: '#111827', fontWeight: 700 }}>{phone || '-'}</span>
+                  <div style={{ marginTop: '2mm', display: 'flex', alignItems: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '2mm' }}>
+                    <span style={{ color: '#6b7280', fontWeight: 700, marginRight: '16px', fontSize: '14px', fontFamily: fontStack }}>İLETİŞİM:</span>
+                    <span style={{ fontSize: '22px', fontFamily: monoFont, color: '#111827', fontWeight: 700 }}>{phone || '-'}</span>
                   </div>
                 </div>
 
                 {/* 3. SATIR: Ürün + Detaylar */}
                 <div style={{ height: '33.33%', display: 'flex' }}>
                   {/* Ürün Listesi */}
-                  <div style={{ width: '75%', borderRight: '2px solid #000', padding: '6mm', background: '#f9fafb', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '2mm', borderBottom: '1px solid #d1d5db', paddingBottom: '1mm' }}>İÇERİK BİLGİSİ / CONTENT</div>
+                  <div style={{ width: '75%', borderRight: '2px solid #000', padding: '6mm', background: '#f9fafb', position: 'relative', display: 'flex', flexDirection: 'column', fontFamily: fontStack }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '2mm', borderBottom: '1px solid #d1d5db', paddingBottom: '1mm', fontFamily: fontStack }}>İÇERİK BİLGİSİ / CONTENT</div>
                     <div style={{ flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ fontSize: product.length > 200 ? '11px' : '14px', color: product ? '#1f2937' : '#9ca3af', fontWeight: product ? 500 : 400, whiteSpace: 'pre-wrap', lineHeight: 1.3, fontStyle: product ? 'normal' : 'italic' }}>
+                      <div style={{ fontSize: product.length > 200 ? '11px' : '14px', color: product ? '#1f2937' : '#9ca3af', fontWeight: product ? 500 : 400, whiteSpace: 'pre-wrap', lineHeight: 1.3, fontStyle: product ? 'normal' : 'italic', fontFamily: fontStack }}>
                         {product || 'Ürün içeriği girilmedi...'}
                       </div>
                     </div>
                     {note && (
-                      <div style={{ position: 'absolute', bottom: '4mm', right: '4mm', border: '2px solid #dc2626', color: '#dc2626', padding: '4px 12px', fontWeight: 900, fontSize: '18px', textTransform: 'uppercase', transform: 'rotate(-2deg)', borderRadius: '4px', background: '#fff', zIndex: 20 }}>
+                      <div style={{ position: 'absolute', bottom: '4mm', right: '4mm', border: '3px solid #dc2626', color: '#dc2626', padding: '6px 16px', fontWeight: 900, fontSize: '22px', textTransform: 'uppercase', transform: 'rotate(-2deg)', borderRadius: '4px', background: '#fff', zIndex: 20, fontFamily: fontStack, letterSpacing: '1px' }}>
                         {note.toLocaleUpperCase('tr-TR')}
                       </div>
                     )}
                   </div>
 
                   {/* Sağ: Tarih, Adet, Desi */}
-                  <div style={{ width: '25%', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ width: '25%', display: 'flex', flexDirection: 'column', fontFamily: fontStack }}>
                     <div style={{ flex: 1, borderBottom: '2px solid #000', padding: '4mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>TARİH</span>
-                      <span style={{ fontSize: '18px', fontFamily: 'monospace', fontWeight: 700 }}>{today}</span>
+                      <span style={{ fontSize: '18px', fontFamily: monoFont, fontWeight: 700 }}>{labelDate}</span>
                     </div>
                     <div style={{ flex: 1, borderBottom: '2px solid #000', padding: '4mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>TOPLAM ADET</span>
