@@ -205,7 +205,7 @@ export default function KargoEtiketPage() {
     },
     mutpro: {
       name: 'MUTPRO',
-      logo: 'https://cdn.myikas.com/images/theme-images/28f96c57-de53-42dc-96e5-988cf858f78b/image_540.webp',
+      logo: '/logos/mutpro-mavi-logo.jpeg',
       address1: 'Balaç Mahallesi Recep Tayyip Erdoğan Bulvarı',
       address2: 'No:114 Atakum / Samsun',
       email: 'info@mutpro.com',
@@ -437,7 +437,7 @@ export default function KargoEtiketPage() {
                   {/* Adres */}
                   <div style={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', marginTop: '2mm', overflow: 'hidden' }}>
                     <div style={{ width: '100%' }}>
-                      <div style={{ fontSize: address.length > 100 ? '18px' : '22px', color: address ? '#1f2937' : '#d1d5db', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-word', fontFamily: fontStack }}>
+                      <div style={{ fontSize: address.length > 100 ? '18px' : '22px', color: address ? '#1f2937' : '#d1d5db', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontFamily: fontStack }}>
                         {address ? address.toLocaleUpperCase('tr-TR') : 'Teslimat adresi buraya gelecek...'}
                       </div>
                       {city && (
