@@ -451,19 +451,15 @@ export default function KargoEtiketPage() {
                     <div style={{ fontSize: '13px', color: '#374151', lineHeight: 1.4, fontFamily: fontStack }}>
                       <div><b>Adres:</b> {sender.address1}</div>
                       <div>{sender.address2}</div>
-                      <div style={{ marginTop: '2mm', display: 'flex', gap: '16px', fontSize: '11px', fontWeight: 600, color: '#4b5563' }}>
-                        <span>{sender.email}</span>
-                        <span>{sender.website}</span>
-                        <span style={{ color: '#000', fontWeight: 700 }}>{sender.phone}</span>
+                      <div style={{ marginTop: '2mm', fontSize: '11px', fontWeight: 600, color: '#4b5563', fontFamily: fontStack }}>
+                        {sender.email} &nbsp;&nbsp; {sender.website} &nbsp;&nbsp; <span style={{ color: '#000', fontWeight: 700 }}>{sender.phone}</span>
+                        {ambar && (
+                          <span style={{ marginLeft: '10px', background: '#1f2937', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', fontFamily: fontStack }}>
+                            SEVK: <span style={{ color: '#facc15', textTransform: 'uppercase' }}>{ambar.toLocaleUpperCase('tr-TR')}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {ambar && (
-                      <div style={{ marginTop: '2mm' }}>
-                        <span style={{ background: '#1f2937', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', fontFamily: fontStack }}>
-                          SEVK AMBARI: <span style={{ color: '#facc15', fontSize: '13px', textTransform: 'uppercase' }}>{ambar.toLocaleUpperCase('tr-TR')}</span>
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
