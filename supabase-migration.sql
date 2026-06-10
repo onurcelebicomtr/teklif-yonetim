@@ -77,8 +77,30 @@ CREATE POLICY IF NOT EXISTS "customers_all" ON customers FOR ALL USING (true) WI
 CREATE POLICY IF NOT EXISTS "packages_all" ON packages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY IF NOT EXISTS "proposals_all" ON proposals FOR ALL USING (true) WITH CHECK (true);
 
--- 6) İndeksler (performans)
+-- 6) SHIPPING_LABELS tablosu (Kargo Etiketleri)
+CREATE TABLE IF NOT EXISTS shipping_labels (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL,
+  recipient_name TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  address TEXT DEFAULT '',
+  city TEXT DEFAULT '',
+  product TEXT DEFAULT '',
+  quantity TEXT DEFAULT '1',
+  desi TEXT DEFAULT '',
+  note TEXT DEFAULT '',
+  tracking TEXT DEFAULT '',
+  payment TEXT DEFAULT 'ALICI ÖDEMELİ',
+  ambar TEXT DEFAULT '',
+  label_date TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE shipping_labels ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS "shipping_labels_all" ON shipping_labels FOR ALL USING (true) WITH CHECK (true);
+
+-- 7) İndeksler (performans)
 CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id);
 CREATE INDEX IF NOT EXISTS idx_customers_brand ON customers(brand_id);
 CREATE INDEX IF NOT EXISTS idx_packages_brand ON packages(brand_id);
 CREATE INDEX IF NOT EXISTS idx_proposals_brand ON proposals(brand_id);
+CREATE INDEX IF NOT EXISTS idx_shipping_labels_brand ON shipping_labels(brand_id);

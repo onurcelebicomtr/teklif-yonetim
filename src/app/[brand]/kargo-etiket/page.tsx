@@ -5,6 +5,7 @@ import { getBrand } from '@/lib/brands';
 import { useAppStore } from '@/lib/store';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { FileDown, Printer, RotateCcw, Shuffle, Search, ChevronDown, ChevronUp, Save, Trash2, Clock } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // Kayıtlı etiket tipi
 interface SavedLabel {
@@ -56,27 +57,53 @@ export default function KargoEtiketPage() {
   const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
   const [showSaved, setShowSaved] = useState(false);
 
-  // localStorage'dan kayıtlı etiketleri yükle
-  useEffect(() => {
+  // Supabase'den etiketleri yükle
+  const fetchLabels = async () => {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('shipping_labels').select('*').eq('brand_id', brandId).order('created_at', { ascending: false });
+        if (!error && data) {
+          setSavedLabels(data.map((row: any) => ({
+            id: row.id, brandId: row.brand_id,
+            recipientName: row.recipient_name || '', phone: row.phone || '', address: row.address || '',
+            city: row.city || '', product: row.product || '', quantity: row.quantity || '1',
+            desi: row.desi || '', note: row.note || '', tracking: row.tracking || '',
+            payment: row.payment || '', ambar: row.ambar || '', labelDate: row.label_date || '',
+            savedAt: new Date(row.created_at).toLocaleString('tr-TR'),
+          })));
+          return;
+        }
+      } catch {}
+    }
+    // Fallback: localStorage
     const saved = localStorage.getItem(`kargo-etiketler-${brandId}`);
     if (saved) setSavedLabels(JSON.parse(saved));
-  }, [brandId]);
-
-  const saveLabelsToStorage = (labels: SavedLabel[]) => {
-    localStorage.setItem(`kargo-etiketler-${brandId}`, JSON.stringify(labels));
-    setSavedLabels(labels);
   };
 
+  useEffect(() => { fetchLabels(); }, [brandId]);
+
   // Etiketi kaydet
-  const saveLabel = () => {
+  const saveLabel = async () => {
     if (!recipientName.trim()) return alert('Kaydetmek için alıcı adı gerekli.');
+    const id = `label-${Date.now()}`;
     const label: SavedLabel = {
-      id: `label-${Date.now()}`,
-      brandId,
+      id, brandId,
       recipientName, phone, address, city, product, quantity, desi, note, tracking, payment, ambar, labelDate,
       savedAt: new Date().toLocaleString('tr-TR'),
     };
-    saveLabelsToStorage([label, ...savedLabels]);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('shipping_labels').insert({
+          id, brand_id: brandId,
+          recipient_name: recipientName, phone, address, city, product, quantity, desi, note, tracking, payment, ambar, label_date: labelDate,
+        });
+      } catch {}
+    }
+    // localStorage'a da yaz (fallback)
+    const updated = [label, ...savedLabels];
+    localStorage.setItem(`kargo-etiketler-${brandId}`, JSON.stringify(updated));
+    setSavedLabels(updated);
     alert('Etiket kaydedildi!');
   };
 
@@ -98,8 +125,13 @@ export default function KargoEtiketPage() {
   };
 
   // Kayıtlı etiketi sil
-  const deleteLabel = (id: string) => {
-    saveLabelsToStorage(savedLabels.filter(l => l.id !== id));
+  const deleteLabel = async (id: string) => {
+    if (isSupabaseConfigured()) {
+      try { await supabase.from('shipping_labels').delete().eq('id', id); } catch {}
+    }
+    const updated = savedLabels.filter(l => l.id !== id);
+    localStorage.setItem(`kargo-etiketler-${brandId}`, JSON.stringify(updated));
+    setSavedLabels(updated);
   };
 
   // Müşteri filtreleme
@@ -232,6 +264,24 @@ export default function KargoEtiketPage() {
   const fontStack = 'Arial, Helvetica, sans-serif';
   const monoFont = 'Courier New, Courier, monospace';
 
+  // Yazdırma fonksiyonu - tam ekran yatay A4
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow || !labelRef.current) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Kargo Etiketi - ${recipientName || 'Yazdır'}</title>
+      <style>
+        @page { size: landscape; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100vw; height: 100vh; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .label-wrapper { width: 100vw; height: 100vh; }
+        .label-wrapper > div { width: 100% !important; height: 100% !important; padding: 5mm !important; }
+      </style></head><body>
+      <div class="label-wrapper">${labelRef.current.outerHTML}</div>
+      <script>setTimeout(function(){ window.print(); window.close(); }, 300);</script>
+      </body></html>`);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -250,7 +300,7 @@ export default function KargoEtiketPage() {
           <button onClick={clearForm} className="px-3 py-2 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
             <RotateCcw className="w-4 h-4" /> Temizle
           </button>
-          <button onClick={() => window.print()} className="px-3 py-2 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
+          <button onClick={handlePrint} className="px-3 py-2 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
             <Printer className="w-4 h-4" /> Yazdır
           </button>
           <button onClick={downloadPDF} disabled={isDownloading} className={`px-4 py-2 rounded-lg text-sm font-bold text-white flex items-center gap-1.5 ${sender.accentBg} hover:opacity-90 disabled:opacity-50`}>
