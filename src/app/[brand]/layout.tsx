@@ -14,7 +14,6 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const fetchAllData = useAppStore((s) => s.fetchAllData);
   const hasHydrated = useAppStore((s) => s._hasHydrated);
 
   useEffect(() => {
@@ -22,11 +21,6 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
       router.push('/');
     }
   }, [brandId, router]);
-
-  useEffect(() => {
-    if (!hasHydrated) return;
-    fetchAllData();
-  }, [hasHydrated, fetchAllData]);
 
   const navItems = [
     { href: `/${brandId}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
