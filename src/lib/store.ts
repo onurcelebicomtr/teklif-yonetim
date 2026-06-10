@@ -160,11 +160,20 @@ export const useAppStore = create<AppState>()(
       fetchProducts: async () => {
         if (!isSupabaseConfigured()) return;
         try {
-          const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-          if (error) { console.error('Supabase fetchProducts error:', error); return; }
-          if (data) {
-            // Supabase = tek kaynak (source of truth)
-            set({ products: data as Product[] });
+          // Tüm ürünleri çek (1000 limit aşımı için pagination)
+          let allProducts: Product[] = [];
+          let page = 0;
+          const PAGE_SIZE = 1000;
+          while (true) {
+            const { data, error } = await supabase.from('products').select('*').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+            if (error) { console.error('Supabase fetchProducts error:', error); break; }
+            if (!data || data.length === 0) break;
+            allProducts = allProducts.concat(data as Product[]);
+            if (data.length < PAGE_SIZE) break;
+            page++;
+          }
+          if (allProducts.length > 0) {
+            set({ products: allProducts });
           }
         } catch (e) { console.error('Supabase fetchProducts network error:', e); }
       },
@@ -194,9 +203,19 @@ export const useAppStore = create<AppState>()(
         try {
           const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
           if (error) { console.error('Supabase fetchCustomers error:', error); return; }
-          if (data) {
+          if (data && data.length > 0) {
             // Supabase = tek kaynak (source of truth)
             set({ customers: data as Customer[] });
+          } else {
+            // Supabase boşsa local müşterileri koru ve Supabase'e yaz
+            const localCustomers = get().customers;
+            if (localCustomers.length > 0) {
+              console.log(`📤 ${localCustomers.length} local müşteri Supabase'e aktarılıyor...`);
+              supabase.from('customers').upsert(localCustomers).then(({ error: uErr }) => {
+                if (uErr) console.error('Supabase müşteri aktarım hatası:', uErr);
+                else console.log('✅ Müşteriler Supabase\'e aktarıldı.');
+              });
+            }
           }
         } catch (e) { console.error('Supabase fetchCustomers network error:', e); }
       },

@@ -45,13 +45,18 @@ export default function ProductLoader() {
       }
 
       if (isSupabaseConfigured()) {
-        // 2. Supabase'den ürünleri çek
-        const { data: dbProducts, error } = await supabase.from('products').select('*');
-        if (error) {
-          console.error('Supabase products fetch error:', error);
+        // 2. Supabase'den tüm ürünleri çek (1000 limit aşımı için pagination)
+        let dbList: any[] = [];
+        let page = 0;
+        const PAGE_SIZE = 1000;
+        while (true) {
+          const { data, error } = await supabase.from('products').select('*').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+          if (error) { console.error('Supabase products fetch error:', error); break; }
+          if (!data || data.length === 0) break;
+          dbList = dbList.concat(data);
+          if (data.length < PAGE_SIZE) break;
+          page++;
         }
-
-        const dbList = (dbProducts || []) as any[];
         const dbIds = new Set(dbList.map((p) => p.id));
 
         // 3. JSON'daki ürünleri Supabase'de yoksa ekle (seed)
