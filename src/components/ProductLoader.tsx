@@ -44,8 +44,18 @@ export default function ProductLoader() {
         }
       }
 
+      // Önce JSON ürünlerini hemen göster (hızlı yükleme)
+      if (jsonProducts.length > 0) {
+        const currentProducts = useAppStore.getState().products;
+        const manualProducts = currentProducts.filter(
+          (p) => !jsonProducts.some((jp) => jp.id === p.id)
+        );
+        setProducts([...jsonProducts, ...manualProducts]);
+        console.log(`✅ ${jsonProducts.length} ürün JSON'dan hemen yüklendi.`);
+      }
+
       if (isSupabaseConfigured()) {
-        // 2. Supabase'den tüm ürünleri çek (1000 limit aşımı için pagination)
+        // Arka planda Supabase'den tüm ürünleri çek (1000 limit aşımı için pagination)
         let dbList: any[] = [];
         let page = 0;
         const PAGE_SIZE = 1000;
@@ -57,30 +67,22 @@ export default function ProductLoader() {
           if (data.length < PAGE_SIZE) break;
           page++;
         }
-        const dbIds = new Set(dbList.map((p) => p.id));
 
-        // 3. JSON'daki ürünleri Supabase'de yoksa ekle (seed)
-        const newJsonProducts = jsonProducts.filter((p) => !dbIds.has(p.id));
-        if (newJsonProducts.length > 0) {
-          const { error: seedErr } = await supabase.from('products').upsert(newJsonProducts);
-          if (seedErr) console.error('Supabase product seed error:', seedErr);
-          else console.log(`✅ ${newJsonProducts.length} yeni ürün Supabase'e aktarıldı.`);
-        }
+        if (dbList.length > 0) {
+          const dbIds = new Set(dbList.map((p) => p.id));
 
-        // 4. Supabase = tek kaynak (source of truth). Local veri karıştırılmaz.
-        const jsonFresh = jsonProducts.filter((p) => !dbIds.has(p.id));
-        setProducts([...dbList, ...jsonFresh]);
-        console.log(`✅ Ürünler Supabase'den yüklendi: ${dbList.length + jsonFresh.length} ürün`);
-      } else {
-        // Supabase yoksa sadece JSON + local
-        if (jsonProducts.length > 0) {
-          const currentProducts = useAppStore.getState().products;
-          const manualProducts = currentProducts.filter(
-            (p) => p.id.startsWith('auto-') || p.id.startsWith('custom-') || !jsonProducts.some((jp) => jp.id === p.id)
-          );
-          const jsonIds = new Set(jsonProducts.map((p) => p.id));
-          const uniqueManual = manualProducts.filter((p) => !jsonIds.has(p.id));
-          setProducts([...jsonProducts, ...uniqueManual]);
+          // JSON'daki ürünleri Supabase'de yoksa ekle (seed)
+          const newJsonProducts = jsonProducts.filter((p) => !dbIds.has(p.id));
+          if (newJsonProducts.length > 0) {
+            const { error: seedErr } = await supabase.from('products').upsert(newJsonProducts);
+            if (seedErr) console.error('Supabase product seed error:', seedErr);
+            else console.log(`✅ ${newJsonProducts.length} yeni ürün Supabase'e aktarıldı.`);
+          }
+
+          // Supabase verisiyle güncelle (JSON + Supabase birleşik)
+          const jsonFresh = jsonProducts.filter((p) => !dbIds.has(p.id));
+          setProducts([...dbList, ...jsonFresh]);
+          console.log(`✅ Ürünler Supabase'den güncellendi: ${dbList.length + jsonFresh.length} ürün`);
         }
       }
     };
