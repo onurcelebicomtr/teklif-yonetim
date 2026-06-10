@@ -4,7 +4,7 @@ import { useParams, useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getBrand } from '@/lib/brands';
 import { useAppStore } from '@/lib/store';
-import { LayoutDashboard, FileText, Package, Users, Upload, ArrowLeft, Menu, X } from 'lucide-react';
+import { LayoutDashboard, FileText, Package, Users, Upload, ArrowLeft, Menu, X, Tag } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BrandLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,7 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
   const hasHydrated = useAppStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    if (!['mutpro', 'guclumutfak', 'grandmutfak'].includes(brandId)) {
+    if (!['mutpro', 'guclumutfak', 'inoks'].includes(brandId)) {
       router.push('/');
     }
   }, [brandId, router]);
@@ -34,6 +34,7 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
     { href: `/${brandId}/teklifler`, label: 'Teklif Geçmişi', icon: Package },
     { href: `/${brandId}/musteriler`, label: 'Müşteriler', icon: Users },
     { href: `/${brandId}/urunler`, label: 'Ürün Yönetimi', icon: Upload },
+    { href: `/${brandId}/kargo-etiket`, label: 'Kargo Etiketi', icon: Tag },
   ];
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');

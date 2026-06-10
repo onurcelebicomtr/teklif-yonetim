@@ -13,8 +13,8 @@ export default function DashboardPage() {
   const { proposals, customers, products } = useAppStore();
 
   const brandProposals = proposals;
-  const brandCustomers = customers.filter((c) => c.brand_id === brandId);
-  const brandProducts = products.filter((p) => p.brand_id === brandId);
+  const brandCustomers = customers;
+  const brandProducts = products;
 
   const totalRevenue = brandProposals
     .filter((p) => p.status === 'approved')
