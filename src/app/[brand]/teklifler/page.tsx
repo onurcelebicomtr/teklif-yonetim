@@ -35,12 +35,12 @@ export default function TekliflerPage() {
       if (preparedByFilter && (p.prepared_by || '') !== preparedByFilter) return false;
       if (dateFilter && (p.proposal_date || '') !== dateFilter) return false;
       if (!search) return true;
-      const s = search.toLowerCase();
+      const s = search.toLocaleLowerCase('tr-TR');
       return (
-        (p.project_name || '').toLowerCase().includes(s) ||
-        (p.customer_name || '').toLowerCase().includes(s) ||
-        (p.proposal_no || '').toLowerCase().includes(s) ||
-        (p.prepared_by || '').toLowerCase().includes(s)
+        (p.project_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
+        (p.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
+        (p.proposal_no || '').toLocaleLowerCase('tr-TR').includes(s) ||
+        (p.prepared_by || '').toLocaleLowerCase('tr-TR').includes(s)
       );
     });
 
