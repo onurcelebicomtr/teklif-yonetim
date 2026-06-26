@@ -642,7 +642,7 @@ export default function OrdersPage() {
                   </thead>
                   <tbody>
                     {formItems.map((item) => (
-                      <tr key={item.id} className={`border-t border-gray-100 ${ORDER_STATUS_ROW_COLORS[item.status]}`}
+                      <tr key={item.id} className={`border-t border-gray-100 ${ORDER_STATUS_ROW_COLORS[item.status]}`}>
                         <td className="px-3 py-2">
                           <input
                             type="text"
