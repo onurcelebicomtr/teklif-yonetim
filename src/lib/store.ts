@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { StateStorage } from 'zustand/middleware';
-import type { Product, Customer, Proposal, PackageTemplate, ProposalItem } from './types';
+import type { Product, Customer, Proposal, PackageTemplate, ProposalItem, Order } from './types';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 // ---------- IndexedDB storage (localStorage 5 MB limitini kaldırır) ----------
@@ -112,6 +112,14 @@ interface AppState {
   updatePackage: (id: string, data: Partial<PackageTemplate>) => Promise<void>;
   removePackage: (id: string) => Promise<void>;
   fetchPackages: () => Promise<void>;
+
+  // Orders (synced with Supabase)
+  orders: Order[];
+  setOrders: (orders: Order[]) => void;
+  addOrder: (order: Order) => Promise<void>;
+  updateOrder: (id: string, data: Partial<Order>) => Promise<void>;
+  removeOrder: (id: string) => Promise<void>;
+  fetchOrders: () => Promise<void>;
 
   // Fetch all data from Supabase at once
   fetchAllData: () => Promise<void>;
@@ -333,10 +341,50 @@ export const useAppStore = create<AppState>()(
         } catch (e) { console.error('Supabase fetchPackages network error:', e); }
       },
 
+      orders: [],
+      setOrders: (orders) => set({ orders }),
+      addOrder: async (order) => {
+        set((s) => ({ orders: [order, ...s.orders] }));
+        if (isSupabaseConfigured()) {
+          try {
+            const { error } = await supabase.from('orders').upsert(order);
+            if (error) console.error('Supabase addOrder error:', error);
+          } catch (e: unknown) { console.error('Supabase addOrder network error:', e); }
+        }
+      },
+      updateOrder: async (id, data) => {
+        set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, ...data } : o)) }));
+        if (isSupabaseConfigured()) {
+          try {
+            const { error } = await supabase.from('orders').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id);
+            if (error) console.error('Supabase updateOrder error:', error);
+          } catch (e: unknown) { console.error('Supabase updateOrder network error:', e); }
+        }
+      },
+      removeOrder: async (id) => {
+        set((s) => ({ orders: s.orders.filter((o) => o.id !== id) }));
+        if (isSupabaseConfigured()) {
+          try {
+            const { error } = await supabase.from('orders').delete().eq('id', id);
+            if (error) console.error('Supabase removeOrder error:', error);
+          } catch (e: unknown) { console.error('Supabase removeOrder network error:', e); }
+        }
+      },
+      fetchOrders: async () => {
+        if (!isSupabaseConfigured()) return;
+        try {
+          const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+          if (error) { console.error('Supabase fetchOrders error:', error); return; }
+          if (data) {
+            set({ orders: data as Order[] });
+          }
+        } catch (e) { console.error('Supabase fetchOrders network error:', e); }
+      },
+
       fetchAllData: async () => {
         if (!isSupabaseConfigured()) return;
         const store = get() as AppState;
-        await Promise.all([store.fetchProducts(), store.fetchCustomers(), store.fetchProposals(), store.fetchPackages()]);
+        await Promise.all([store.fetchProducts(), store.fetchCustomers(), store.fetchProposals(), store.fetchPackages(), store.fetchOrders()]);
       },
 
       currentItems: [],
@@ -359,6 +407,7 @@ export const useAppStore = create<AppState>()(
         customers: state.customers,
         proposals: state.proposals,
         packages: state.packages,
+        orders: state.orders,
         rates: state.rates,
       }),
       onRehydrateStorage: () => (state) => {

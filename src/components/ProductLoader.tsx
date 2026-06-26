@@ -18,7 +18,7 @@ const PACKAGE_FILES: Record<string, string> = {
 };
 
 export default function ProductLoader() {
-  const { setProducts, setRates, setPackages, fetchCustomers, fetchProposals } = useAppStore();
+  const { setProducts, setRates, setPackages, fetchCustomers, fetchProposals, fetchOrders } = useAppStore();
   const hasHydrated = useAppStore((s) => s._hasHydrated);
   const loaded = useRef(false);
 
@@ -161,6 +161,7 @@ export default function ProductLoader() {
     if (isSupabaseConfigured()) {
       fetchCustomers();
       fetchProposals();
+      fetchOrders();
     }
   }, [hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 

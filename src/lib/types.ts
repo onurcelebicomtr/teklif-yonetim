@@ -88,6 +88,88 @@ export interface PackageItem {
   currency?: 'TRY' | 'EUR' | 'USD' | 'GBP';
 }
 
+// --- Order (Sipariş) Types ---
+
+export type OrderStatus =
+  | 'siparis_alindi'
+  | 'hazirlaniyor'
+  | 'urunler_hazir'
+  | 'eksik_urun'
+  | 'tamamlandi'
+  | 'teslimata_hazir'
+  | 'teslim_edildi'
+  | 'iptal';
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  siparis_alindi: 'Sipariş Alındı',
+  hazirlaniyor: 'Hazırlanıyor',
+  urunler_hazir: 'Ürünler Hazır',
+  eksik_urun: 'Eksik Ürün Var',
+  tamamlandi: 'Sipariş Tamamlandı',
+  teslimata_hazir: 'Teslimata Hazır',
+  teslim_edildi: 'Teslim Edildi',
+  iptal: 'İptal Edildi',
+};
+
+export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
+  siparis_alindi: 'bg-purple-100 text-purple-700',
+  hazirlaniyor: 'bg-yellow-100 text-yellow-700',
+  urunler_hazir: 'bg-blue-100 text-blue-700',
+  eksik_urun: 'bg-red-100 text-red-700',
+  tamamlandi: 'bg-emerald-100 text-emerald-700',
+  teslimata_hazir: 'bg-cyan-100 text-cyan-700',
+  teslim_edildi: 'bg-green-100 text-green-700',
+  iptal: 'bg-gray-100 text-gray-500',
+};
+
+export const ORDER_STATUS_ROW_COLORS: Record<OrderStatus, string> = {
+  siparis_alindi: '',
+  hazirlaniyor: 'bg-yellow-50',
+  urunler_hazir: 'bg-blue-50',
+  eksik_urun: 'bg-red-50',
+  tamamlandi: 'bg-emerald-50',
+  teslimata_hazir: 'bg-cyan-50',
+  teslim_edildi: 'bg-green-50',
+  iptal: 'bg-gray-50 opacity-60',
+};
+
+export interface OrderItem {
+  id: string;
+  product_id?: string;
+  sku?: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total: number;
+  status: OrderStatus;
+  missing_qty?: number;
+  missing_note?: string;
+}
+
+export interface Order {
+  id: string;
+  brand_id: string;
+  order_no: string;
+  proposal_id?: string;
+  proposal_no?: string;
+  customer_name: string;
+  customer_phone?: string;
+  customer_city?: string;
+  customer_address?: string;
+  order_date: string;
+  delivery_date?: string;
+  items: OrderItem[];
+  status: OrderStatus;
+  notes?: string;
+  assigned_to?: string;
+  total: number;
+  currency: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'approved' | 'rejected';
 
 export const STATUS_LABELS: Record<ProposalStatus, string> = {
