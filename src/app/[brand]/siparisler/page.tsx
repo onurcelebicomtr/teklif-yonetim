@@ -642,7 +642,7 @@ export default function OrdersPage() {
                   </thead>
                   <tbody>
                     {formItems.map((item) => (
-                      <tr key={item.id} className="border-t border-gray-100">
+                      <tr key={item.id} className={`border-t border-gray-100 ${ORDER_STATUS_ROW_COLORS[item.status]}`}
                         <td className="px-3 py-2">
                           <input
                             type="text"
@@ -691,7 +691,7 @@ export default function OrdersPage() {
                           <select
                             value={item.status}
                             onChange={(e) => updateFormItem(item.id, 'status', e.target.value)}
-                            className="w-full border border-gray-200 rounded px-1 py-1 text-xs"
+                            className={`w-full rounded px-1 py-1 text-xs border-0 font-medium ${ORDER_STATUS_COLORS[item.status]}`}
                           >
                             {ALL_STATUSES.map((s) => (
                               <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
