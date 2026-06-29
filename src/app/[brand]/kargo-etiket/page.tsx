@@ -3,11 +3,10 @@
 import { useParams } from 'next/navigation';
 import { getBrand } from '@/lib/brands';
 import { useAppStore } from '@/lib/store';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FileDown, Printer, RotateCcw, Shuffle, Search, ChevronDown, ChevronUp, Save, Trash2, Clock } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
-// Kayıtlı etiket tipi
 interface SavedLabel {
   id: string;
   brandId: string;
@@ -26,6 +25,13 @@ interface SavedLabel {
   savedAt: string;
 }
 
+const FONT_CSS_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap';
+
+const F = {
+  sans: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+  mono: "'JetBrains Mono', 'Consolas', 'Courier New', monospace",
+};
+
 export default function KargoEtiketPage() {
   const params = useParams();
   const brandId = params.brand as string;
@@ -34,8 +40,8 @@ export default function KargoEtiketPage() {
   const brandCustomers = customers.filter((c) => c.brand_id === brandId);
 
   const labelRef = useRef<HTMLDivElement>(null);
+  const [fontsReady, setFontsReady] = useState(false);
 
-  // Form state
   const [tracking, setTracking] = useState('');
   const [payment, setPayment] = useState('ALICI ÖDEMELİ');
   const [ambar, setAmbar] = useState('');
@@ -52,13 +58,20 @@ export default function KargoEtiketPage() {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showForm, setShowForm] = useState(true);
-
-  // Kayıtlı etiketler
   const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
   const [showSaved, setShowSaved] = useState(false);
 
-  // Supabase'den etiketleri yükle
-  const fetchLabels = async () => {
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = FONT_CSS_URL;
+    document.head.appendChild(link);
+
+    document.fonts.ready.then(() => setFontsReady(true));
+    return () => { document.head.removeChild(link); };
+  }, []);
+
+  const fetchLabels = useCallback(async () => {
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await supabase.from('shipping_labels').select('*').eq('brand_id', brandId).order('created_at', { ascending: false });
@@ -75,14 +88,12 @@ export default function KargoEtiketPage() {
         }
       } catch {}
     }
-    // Fallback: localStorage
     const saved = localStorage.getItem(`kargo-etiketler-${brandId}`);
     if (saved) setSavedLabels(JSON.parse(saved));
-  };
+  }, [brandId]);
 
-  useEffect(() => { fetchLabels(); }, [brandId]);
+  useEffect(() => { fetchLabels(); }, [fetchLabels]);
 
-  // Etiketi kaydet
   const saveLabel = async () => {
     if (!recipientName.trim()) return alert('Kaydetmek için alıcı adı gerekli.');
     const id = `label-${Date.now()}`;
@@ -91,7 +102,6 @@ export default function KargoEtiketPage() {
       recipientName, phone, address, city, product, quantity, desi, note, tracking, payment, ambar, labelDate,
       savedAt: new Date().toLocaleString('tr-TR'),
     };
-
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('shipping_labels').insert({
@@ -100,14 +110,12 @@ export default function KargoEtiketPage() {
         });
       } catch {}
     }
-    // localStorage'a da yaz (fallback)
     const updated = [label, ...savedLabels];
     localStorage.setItem(`kargo-etiketler-${brandId}`, JSON.stringify(updated));
     setSavedLabels(updated);
     alert('Etiket kaydedildi!');
   };
 
-  // Kayıtlı etiketi yükle
   const loadLabel = (label: SavedLabel) => {
     setRecipientName(label.recipientName);
     setPhone(label.phone);
@@ -124,7 +132,6 @@ export default function KargoEtiketPage() {
     setShowSaved(false);
   };
 
-  // Kayıtlı etiketi sil
   const deleteLabel = async (id: string) => {
     if (isSupabaseConfigured()) {
       try { await supabase.from('shipping_labels').delete().eq('id', id); } catch {}
@@ -134,7 +141,6 @@ export default function KargoEtiketPage() {
     setSavedLabels(updated);
   };
 
-  // Müşteri filtreleme
   const filteredCustomers = useMemo(() => {
     if (!customerSearch || customerSearch.length < 2) return [];
     const s = customerSearch.toLowerCase();
@@ -152,16 +158,14 @@ export default function KargoEtiketPage() {
     setShowCustomerDropdown(false);
   };
 
-  // Rastgele takip no
-  const generateTracking = () => {
+  const generateTracking = useCallback(() => {
     const prefix = brandId === 'guclumutfak' ? 'GM' : brandId === 'mutpro' ? 'MP' : 'IN';
     const num = Math.floor(100000000 + Math.random() * 900000000);
     setTracking(prefix + num);
-  };
+  }, [brandId]);
 
-  useEffect(() => { generateTracking(); }, []);
+  useEffect(() => { generateTracking(); }, [generateTracking]);
 
-  // Barkod oluştur
   useEffect(() => {
     if (!tracking) return;
     const loadBarcode = async () => {
@@ -171,15 +175,15 @@ export default function KargoEtiketPage() {
         if (el) {
           JsBarcode(el, tracking, {
             format: 'CODE128', width: 1.5, height: 30,
-            displayValue: true, fontSize: 12, margin: 0, background: 'transparent',
+            displayValue: true, fontSize: 11, margin: 0, background: 'transparent',
+            font: 'JetBrains Mono',
           });
         }
       } catch {}
     };
     loadBarcode();
-  }, [tracking]);
+  }, [tracking, fontsReady]);
 
-  // Formu temizle
   const clearForm = () => {
     setPayment('ALICI ÖDEMELİ');
     setAmbar('');
@@ -196,21 +200,38 @@ export default function KargoEtiketPage() {
     generateTracking();
   };
 
-  // PDF indir
   const downloadPDF = async () => {
     if (!labelRef.current) return;
     setIsDownloading(true);
     try {
+      await document.fonts.ready;
+
       const html2pdf = (await import('html2pdf.js')).default;
       let fileName = recipientName.trim() || 'Kargo_Etiketi';
       if (city.trim().length > 2) fileName += ' - ' + city.trim();
       fileName += '.pdf';
 
+      const cloned = labelRef.current.cloneNode(true) as HTMLElement;
+      const style = document.createElement('style');
+      style.textContent = `
+        @import url('${FONT_CSS_URL}');
+        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+      `;
+      cloned.prepend(style);
+
       const opt = {
         margin: 0,
         filename: fileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, letterRendering: true },
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: {
+          scale: 3,
+          useCORS: true,
+          scrollY: 0,
+          scrollX: 0,
+          letterRendering: true,
+          allowTaint: true,
+          logging: false,
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const },
         pagebreak: { mode: ['avoid-all'] },
       };
@@ -222,7 +243,6 @@ export default function KargoEtiketPage() {
     setIsDownloading(false);
   };
 
-  // Marka bazlı gönderici bilgileri
   const senderInfo = {
     guclumutfak: {
       name: 'GÜÇLÜ MUTFAK',
@@ -260,24 +280,20 @@ export default function KargoEtiketPage() {
   };
   const sender = senderInfo[brandId as keyof typeof senderInfo] || senderInfo.mutpro;
 
-  // Font ailesi - PDF'de de düzgün görünsün diye sistem fontları
-  const fontStack = 'Arial, Helvetica, sans-serif';
-  const monoFont = 'Courier New, Courier, monospace';
-
-  // Yazdırma fonksiyonu - tam ekran yatay A4
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow || !labelRef.current) return;
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Kargo Etiketi - ${recipientName || 'Yazdır'}</title>
+      <link rel="stylesheet" href="${FONT_CSS_URL}" />
       <style>
         @page { size: landscape; margin: 0; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { width: 100vw; height: 100vh; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { width: 100vw; height: 100vh; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: ${F.sans}; }
         .label-wrapper { width: 100vw; height: 100vh; }
         .label-wrapper > div { width: 100% !important; height: 100% !important; padding: 5mm !important; }
       </style></head><body>
       <div class="label-wrapper">${labelRef.current.outerHTML}</div>
-      <script>setTimeout(function(){ window.print(); window.close(); }, 300);</script>
+      <script>setTimeout(function(){ window.print(); window.close(); }, 600);</script>
       </body></html>`);
     printWindow.document.close();
   };
@@ -336,7 +352,6 @@ export default function KargoEtiketPage() {
       <div className="flex gap-6">
         {/* SOL: Form */}
         <div className="w-[380px] flex-shrink-0 space-y-3 print:hidden">
-          {/* Müşteri Arama */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
             <h3 className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> Müşteri Seç</h3>
             <div className="relative">
@@ -360,7 +375,6 @@ export default function KargoEtiketPage() {
             </div>
           </div>
 
-          {/* Gönderim Detayları */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
             <button onClick={() => setShowForm(!showForm)} className="w-full flex items-center justify-between text-xs font-bold text-gray-500 uppercase">
               Gönderim Detayları
@@ -396,7 +410,6 @@ export default function KargoEtiketPage() {
             )}
           </div>
 
-          {/* Alıcı Bilgileri */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-gray-500 uppercase">Alıcı Bilgileri</h3>
             <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Alıcı Adı / Firma" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
@@ -405,7 +418,6 @@ export default function KargoEtiketPage() {
             <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="İlçe / İL (Örn: ZEYTİNBURNU / İSTANBUL)" className="w-full p-2 border border-gray-300 rounded-lg text-sm font-bold" />
           </div>
 
-          {/* Paket İçeriği */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-gray-500 uppercase">Paket İçeriği</h3>
             <textarea value={product} onChange={(e) => setProduct(e.target.value)} rows={3} placeholder="Ürünleri buraya listeleyin..." className="w-full p-2 border border-gray-300 rounded-lg text-sm resize-none" />
@@ -430,32 +442,51 @@ export default function KargoEtiketPage() {
         <div className="flex-1 flex justify-center">
           <div className="origin-top" style={{ transform: 'scale(0.75)' }}>
             {/* A4 Yatay Kağıt */}
-            <div ref={labelRef} style={{ width: '297mm', height: '208mm', background: 'white', padding: '5mm', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', fontFamily: fontStack }}>
-              <div style={{ border: '3px solid #000', height: '100%', display: 'flex', flexDirection: 'column', background: 'white' }}>
+            <div
+              ref={labelRef}
+              style={{
+                width: '297mm',
+                height: '208mm',
+                background: 'white',
+                padding: '5mm',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                position: 'relative',
+                fontFamily: F.sans,
+                WebkitFontSmoothing: 'antialiased',
+              }}
+            >
+              <div style={{ border: '2.5px solid #111', height: '100%', display: 'flex', flexDirection: 'column', background: 'white' }}>
 
                 {/* 1. SATIR: Gönderici */}
-                <div style={{ display: 'flex', borderBottom: '2px solid #000', height: '25%' }}>
+                <div style={{ display: 'flex', borderBottom: '2px solid #111', height: '25%' }}>
                   {/* Logo */}
-                  <div style={{ width: '33.33%', borderRight: '2px solid #000', padding: '4mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '33.33%', borderRight: '2px solid #111', padding: '4mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src={sender.logo} crossOrigin="anonymous" alt={sender.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                   </div>
                   {/* Gönderici Bilgi */}
-                  <div style={{ width: '66.67%', padding: '4mm', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#f9fafb', position: 'relative', fontFamily: fontStack }}>
+                  <div style={{ width: '66.67%', padding: '5mm 5mm 4mm 5mm', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#fafafa', position: 'relative', fontFamily: F.sans }}>
                     {/* Barkod */}
-                    <div style={{ position: 'absolute', top: '2mm', right: '2mm' }}>
+                    <div style={{ position: 'absolute', top: '3mm', right: '3mm' }}>
                       <svg id="barcode-svg"></svg>
                     </div>
 
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '1mm', marginTop: '4mm', fontFamily: fontStack }}>GÖNDERİCİ / SENDER</div>
-                    <div style={{ fontSize: '24px', fontWeight: 900, color: '#111827', marginBottom: '1mm', fontFamily: fontStack }}>{sender.name}</div>
-                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: 1.4, fontFamily: fontStack }}>
-                      <div><b>Adres:</b> {sender.address1}</div>
+                    <div style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '3px', marginBottom: '1.5mm', marginTop: '4mm' }}>Gönderici / Sender</div>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#111', marginBottom: '2mm', letterSpacing: '-0.3px' }}>{sender.name}</div>
+                    <div style={{ fontSize: '12px', color: '#374151', lineHeight: 1.5, fontWeight: 400 }}>
+                      <div>{sender.address1}</div>
                       <div>{sender.address2}</div>
-                      <div style={{ marginTop: '2mm', fontSize: '11px', fontWeight: 600, color: '#4b5563', fontFamily: fontStack }}>
-                        {sender.email} &nbsp;&nbsp; {sender.website} &nbsp;&nbsp; <span style={{ color: '#000', fontWeight: 700 }}>{sender.phone}</span>
+                      <div style={{ marginTop: '2mm', fontSize: '11px', fontWeight: 500, color: '#6b7280', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <span>{sender.email}</span>
+                        <span style={{ color: '#d1d5db' }}>|</span>
+                        <span>{sender.website}</span>
+                        <span style={{ color: '#d1d5db' }}>|</span>
+                        <span style={{ color: '#111', fontWeight: 700, fontFamily: F.mono, fontSize: '12px', letterSpacing: '0.5px' }}>{sender.phone}</span>
                         {ambar && (
-                          <span style={{ marginLeft: '10px', background: '#1f2937', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', fontFamily: fontStack }}>
-                            SEVK: <span style={{ color: '#facc15', textTransform: 'uppercase' }}>{ambar.toLocaleUpperCase('tr-TR')}</span>
+                          <span style={{ background: '#111', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 8px', borderRadius: '3px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                            Sevk: <span style={{ color: '#fbbf24' }}>{ambar.toLocaleUpperCase('tr-TR')}</span>
                           </span>
                         )}
                       </div>
@@ -464,30 +495,52 @@ export default function KargoEtiketPage() {
                 </div>
 
                 {/* 2. SATIR: Alıcı */}
-                <div style={{ flexGrow: 1, borderBottom: '2px solid #000', padding: '8mm', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontFamily: fontStack }}>
-                  {/* Sağ üst: Tek şerit halinde ALICI + Ödeme */}
+                <div style={{ flexGrow: 1, borderBottom: '2px solid #111', padding: '8mm 8mm 6mm 8mm', background: '#fff', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontFamily: F.sans }}>
+                  {/* Sağ üst badge */}
                   <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'stretch' }}>
-                    <div style={{ background: '#000', color: '#fff', padding: '8px 14px', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', fontFamily: fontStack }}>
-                      ALICI / CONSIGNEE
+                    <div style={{ background: '#111', color: '#fff', padding: '7px 14px', fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                      Alıcı / Consignee
                     </div>
-                    <div style={{ background: sender.accentColor, color: '#fff', padding: '8px 18px', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', fontFamily: fontStack }}>
+                    <div style={{ background: sender.accentColor, color: '#fff', padding: '7px 20px', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center' }}>
                       {payment}
                     </div>
                   </div>
 
                   {/* İsim */}
-                  <div style={{ fontSize: recipientName.length > 30 ? '36px' : '48px', fontWeight: 900, color: recipientName ? '#111827' : '#d1d5db', letterSpacing: '-0.5px', lineHeight: 1, paddingRight: '280px', wordBreak: 'break-word', fontFamily: fontStack }}>
+                  <div style={{
+                    fontSize: recipientName.length > 30 ? '34px' : '44px',
+                    fontWeight: 900,
+                    color: recipientName ? '#111' : '#e5e7eb',
+                    letterSpacing: '-0.5px',
+                    lineHeight: 1.05,
+                    paddingRight: '280px',
+                    wordBreak: 'break-word',
+                  }}>
                     {recipientName ? recipientName.toLocaleUpperCase('tr-TR') : 'ALICI İSMİ'}
                   </div>
 
                   {/* Adres */}
-                  <div style={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', marginTop: '2mm', overflow: 'hidden' }}>
+                  <div style={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', marginTop: '3mm', overflow: 'hidden' }}>
                     <div style={{ width: '100%' }}>
-                      <div style={{ fontSize: address.length > 100 ? '18px' : '22px', color: address ? '#1f2937' : '#d1d5db', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontFamily: fontStack }}>
+                      <div style={{
+                        fontSize: address.length > 100 ? '16px' : '20px',
+                        color: address ? '#374151' : '#e5e7eb',
+                        fontWeight: 400,
+                        lineHeight: 1.5,
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                      }}>
                         {address ? address.toLocaleUpperCase('tr-TR') : 'Teslimat adresi buraya gelecek...'}
                       </div>
                       {city && (
-                        <div style={{ fontSize: '28px', fontWeight: 900, color: '#111827', marginTop: '2mm', textTransform: 'uppercase', fontFamily: fontStack }}>
+                        <div style={{
+                          fontSize: '26px',
+                          fontWeight: 900,
+                          color: '#111',
+                          marginTop: '3mm',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}>
                           {city.toLocaleUpperCase('tr-TR')}
                         </div>
                       )}
@@ -495,42 +548,66 @@ export default function KargoEtiketPage() {
                   </div>
 
                   {/* Telefon */}
-                  <div style={{ marginTop: '2mm', display: 'flex', alignItems: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '2mm' }}>
-                    <span style={{ color: '#6b7280', fontWeight: 700, marginRight: '16px', fontSize: '14px', fontFamily: fontStack }}>İLETİŞİM:</span>
-                    <span style={{ fontSize: '22px', fontFamily: monoFont, color: '#111827', fontWeight: 700 }}>{phone || '-'}</span>
+                  <div style={{ marginTop: '2mm', display: 'flex', alignItems: 'center', borderTop: '1.5px solid #e5e7eb', paddingTop: '3mm' }}>
+                    <span style={{ color: '#9ca3af', fontWeight: 700, marginRight: '16px', fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>İletişim</span>
+                    <span style={{ fontSize: '22px', fontFamily: F.mono, color: '#111', fontWeight: 700, letterSpacing: '1px' }}>{phone || '-'}</span>
                   </div>
                 </div>
 
                 {/* 3. SATIR: Ürün + Detaylar */}
                 <div style={{ height: '33.33%', display: 'flex' }}>
                   {/* Ürün Listesi */}
-                  <div style={{ width: '75%', borderRight: '2px solid #000', padding: '6mm', background: '#f9fafb', position: 'relative', display: 'flex', flexDirection: 'column', fontFamily: fontStack }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '2mm', borderBottom: '1px solid #d1d5db', paddingBottom: '1mm', fontFamily: fontStack }}>İÇERİK BİLGİSİ / CONTENT</div>
+                  <div style={{ width: '75%', borderRight: '2px solid #111', padding: '5mm 6mm', background: '#fafafa', position: 'relative', display: 'flex', flexDirection: 'column', fontFamily: F.sans }}>
+                    <div style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: '2mm', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5mm', letterSpacing: '2px' }}>
+                      İçerik Bilgisi / Content
+                    </div>
                     <div style={{ flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ fontSize: product.length > 200 ? '11px' : '14px', color: product ? '#1f2937' : '#9ca3af', fontWeight: product ? 500 : 400, whiteSpace: 'pre-wrap', lineHeight: 1.3, fontStyle: product ? 'normal' : 'italic', fontFamily: fontStack }}>
+                      <div style={{
+                        fontSize: product.length > 200 ? '11px' : '13px',
+                        color: product ? '#374151' : '#d1d5db',
+                        fontWeight: product ? 400 : 400,
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: 1.5,
+                        fontStyle: product ? 'normal' : 'italic',
+                      }}>
                         {product || 'Ürün içeriği girilmedi...'}
                       </div>
                     </div>
                     {note && (
-                      <div style={{ position: 'absolute', bottom: '4mm', right: '4mm', border: '3px solid #dc2626', color: '#dc2626', padding: '6px 16px', fontWeight: 900, fontSize: '22px', textTransform: 'uppercase', transform: 'rotate(-2deg)', borderRadius: '4px', background: '#fff', zIndex: 20, fontFamily: fontStack, letterSpacing: '1px' }}>
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '5mm',
+                        right: '5mm',
+                        border: '2.5px solid #dc2626',
+                        color: '#dc2626',
+                        padding: '5px 14px',
+                        fontWeight: 800,
+                        fontSize: '20px',
+                        textTransform: 'uppercase',
+                        transform: 'rotate(-2deg)',
+                        borderRadius: '3px',
+                        background: '#fff',
+                        zIndex: 20,
+                        letterSpacing: '1px',
+                      }}>
                         {note.toLocaleUpperCase('tr-TR')}
                       </div>
                     )}
                   </div>
 
                   {/* Sağ: Tarih, Adet, Desi */}
-                  <div style={{ width: '25%', display: 'flex', flexDirection: 'column', fontFamily: fontStack }}>
-                    <div style={{ flex: 1, borderBottom: '2px solid #000', padding: '4mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>TARİH</span>
-                      <span style={{ fontSize: '18px', fontFamily: monoFont, fontWeight: 700 }}>{labelDate}</span>
+                  <div style={{ width: '25%', display: 'flex', flexDirection: 'column', fontFamily: F.sans }}>
+                    <div style={{ flex: 1, borderBottom: '2px solid #111', padding: '3mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '2px' }}>Tarih</span>
+                      <span style={{ fontSize: '16px', fontFamily: F.mono, fontWeight: 700, marginTop: '1mm', letterSpacing: '0.5px' }}>{labelDate}</span>
                     </div>
-                    <div style={{ flex: 1, borderBottom: '2px solid #000', padding: '4mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>TOPLAM ADET</span>
-                      <span style={{ fontSize: '36px', fontWeight: 900 }}>{quantity || '1'}</span>
+                    <div style={{ flex: 1, borderBottom: '2px solid #111', padding: '3mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '2px' }}>Toplam Adet</span>
+                      <span style={{ fontSize: '34px', fontWeight: 900, marginTop: '1mm', color: '#111' }}>{quantity || '1'}</span>
                     </div>
-                    <div style={{ flex: 1, padding: '4mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>DESİ</span>
-                      <span style={{ fontSize: '22px', fontWeight: 700 }}>{desi || '-'}</span>
+                    <div style={{ flex: 1, padding: '3mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '2px' }}>Desi</span>
+                      <span style={{ fontSize: '20px', fontWeight: 700, marginTop: '1mm', color: '#111' }}>{desi || '-'}</span>
                     </div>
                   </div>
                 </div>
