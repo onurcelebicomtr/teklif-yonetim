@@ -56,7 +56,6 @@ export default function KargoEtiketPage() {
   const [labelDate, setLabelDate] = useState(new Date().toLocaleDateString('tr-TR'));
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [showForm, setShowForm] = useState(true);
   const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
   const [showSaved, setShowSaved] = useState(false);
@@ -200,47 +199,23 @@ export default function KargoEtiketPage() {
     generateTracking();
   };
 
-  const downloadPDF = async () => {
-    if (!labelRef.current) return;
-    setIsDownloading(true);
-    try {
-      await document.fonts.ready;
-
-      const html2pdf = (await import('html2pdf.js')).default;
-      let fileName = recipientName.trim() || 'Kargo_Etiketi';
-      if (city.trim().length > 2) fileName += ' - ' + city.trim();
-      fileName += '.pdf';
-
-      const cloned = labelRef.current.cloneNode(true) as HTMLElement;
-      const style = document.createElement('style');
-      style.textContent = `
-        @import url('${FONT_CSS_URL}');
-        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
-      `;
-      cloned.prepend(style);
-
-      const opt = {
-        margin: 0,
-        filename: fileName,
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: {
-          scale: 3,
-          useCORS: true,
-          scrollY: 0,
-          scrollX: 0,
-          letterRendering: true,
-          allowTaint: true,
-          logging: false,
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const },
-        pagebreak: { mode: ['avoid-all'] },
-      };
-      await html2pdf().set(opt).from(labelRef.current).save();
-    } catch (err) {
-      console.error('PDF hatası:', err);
-      alert('PDF oluşturulurken hata oluştu.');
-    }
-    setIsDownloading(false);
+  const downloadPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow || !labelRef.current) return;
+    const title = recipientName.trim() || 'Kargo Etiketi';
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+      <link rel="stylesheet" href="${FONT_CSS_URL}" />
+      <style>
+        @page { size: landscape; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { width: 100vw; height: 100vh; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: ${F.sans}; }
+        .label-wrapper { width: 100vw; height: 100vh; }
+        .label-wrapper > div { width: 100% !important; height: 100% !important; padding: 5mm !important; }
+      </style></head><body>
+      <div class="label-wrapper">${labelRef.current.outerHTML}</div>
+      <script>setTimeout(function(){ window.print(); window.close(); }, 600);</script>
+      </body></html>`);
+    printWindow.document.close();
   };
 
   const senderInfo = {
@@ -319,8 +294,8 @@ export default function KargoEtiketPage() {
           <button onClick={handlePrint} className="px-3 py-2 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
             <Printer className="w-4 h-4" /> Yazdır
           </button>
-          <button onClick={downloadPDF} disabled={isDownloading} className={`px-4 py-2 rounded-lg text-sm font-bold text-white flex items-center gap-1.5 ${sender.accentBg} hover:opacity-90 disabled:opacity-50`}>
-            <FileDown className="w-4 h-4" /> {isDownloading ? 'Oluşturuluyor...' : 'PDF İndir'}
+          <button onClick={downloadPDF} className={`px-4 py-2 rounded-lg text-sm font-bold text-white flex items-center gap-1.5 ${sender.accentBg} hover:opacity-90`}>
+            <FileDown className="w-4 h-4" /> PDF İndir
           </button>
         </div>
       </div>
