@@ -379,13 +379,29 @@ export default function OrdersPage() {
   const currencySymbol = formCurrency === 'EUR' ? '€' : formCurrency === 'USD' ? '$' : '₺';
 
   const generateIrsaliye = (order: Order) => {
-    const sym = order.currency === 'EUR' ? '€' : order.currency === 'USD' ? '$' : '₺';
     const now = new Date();
     const todayFormatted = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
     const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const accent = brand.accentColor;
 
-    const itemRows = order.items.map((item, i) => `
+    const statusColors: Record<string, { bg: string; text: string; label: string }> = {
+      siparis_alindi: { bg: '#f3e8ff', text: '#7c3aed', label: 'Sipariş Alındı' },
+      hazirlaniyor: { bg: '#fef9c3', text: '#a16207', label: 'Hazırlanıyor' },
+      urunler_hazir: { bg: '#dbeafe', text: '#1d4ed8', label: 'Ürünler Hazır' },
+      eksik_urun: { bg: '#fee2e2', text: '#dc2626', label: 'Eksik Ürün' },
+      tamamlandi: { bg: '#d1fae5', text: '#059669', label: 'Tamamlandı' },
+      teslimata_hazir: { bg: '#cffafe', text: '#0891b2', label: 'Teslimata Hazır' },
+      teslim_edildi: { bg: '#dcfce7', text: '#16a34a', label: 'Teslim Edildi' },
+      iptal: { bg: '#f3f4f6', text: '#6b7280', label: 'İptal' },
+    };
+
+    const logoUrl = brand.id === 'guclumutfak'
+      ? 'https://cdn.myikas.com/images/theme-images/4036443e-0fdf-43fc-9903-6a4ba22635d4/image_1080.webp'
+      : brand.logoDark || brand.logo;
+
+    const itemRows = order.items.map((item, i) => {
+      const sc = statusColors[item.status] || statusColors.siparis_alindi;
+      return `
       <tr style="${i % 2 === 1 ? 'background-color: #f9f9f9;' : ''}">
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; font-size: 13px;">
           <div style="font-weight: 600;">${item.name}</div>
@@ -393,17 +409,22 @@ export default function OrdersPage() {
           ${item.description ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${item.description}</div>` : ''}
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: center; font-size: 13px; font-weight: 500;">${item.quantity} ${item.unit}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${fmt(item.unit_price)} ${sym}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: right; font-size: 13px; font-weight: 600;">${fmt(item.total)} ${sym}</td>
-      </tr>
-    `).join('');
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: center;">
+          <span style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${sc.bg}; color: ${sc.text};">${sc.label}</span>
+          ${item.status === 'eksik_urun' && item.missing_qty ? `<div style="font-size: 10px; color: #dc2626; margin-top: 3px;">${item.missing_qty} adet eksik</div>` : ''}
+          ${item.status === 'eksik_urun' && item.missing_note ? `<div style="font-size: 10px; color: #6b7280; margin-top: 1px;">${item.missing_note}</div>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
 
     const blankRows = Math.max(0, 6 - order.items.length);
     const blankRowsHtml = Array(blankRows).fill(`
-      <tr><td style="height: 40px; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td></tr>
+      <tr><td style="height: 40px; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td></tr>
     `).join('');
 
-    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Sevk İrsaliyesi - ${order.order_no}</title>
+    const overallSc = statusColors[order.status] || statusColors.siparis_alindi;
+
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Teslimat Belgesi - ${order.order_no}</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" />
     <style>
       @page { size: portrait; margin: 0; }
@@ -426,17 +447,17 @@ export default function OrdersPage() {
       <!-- HEADER -->
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px;">
         <tr>
-          <td style="vertical-align: top; width: 50%;">
-            <div style="font-size: 28px; font-weight: 900; color: #111; letter-spacing: -0.5px; line-height: 1;">${brand.fullName}</div>
+          <td style="vertical-align: middle; width: 50%;">
+            <img src="${logoUrl}" alt="${brand.fullName}" style="max-height: 60px; max-width: 220px; object-fit: contain;" crossorigin="anonymous" />
             <div style="font-size: 11px; font-weight: 600; color: #6b7280; margin-top: 6px; border-top: 2px solid #111; padding-top: 4px; display: inline-block; letter-spacing: 1.5px; text-transform: uppercase;">${brand.slogan}</div>
           </td>
           <td style="vertical-align: top; width: 50%; text-align: right;">
-            <div style="font-size: 24px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px;">SEVK İRSALİYESİ</div>
+            <div style="font-size: 24px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px;">TESLİMAT BELGESİ</div>
             <div style="font-size: 12px; color: #6b7280; line-height: 1.8; margin-top: 4px;">
               <strong style="color: #374151;">Belge No:</strong> <span class="mono">${order.order_no}</span><br>
               ${order.proposal_no ? `<strong style="color: #374151;">Teklif No:</strong> <span class="mono">${order.proposal_no}</span><br>` : ''}
-              <strong style="color: #374151;">İl Kodu:</strong> 34
             </div>
+            <div style="display: inline-block; margin-top: 6px; padding: 4px 14px; border-radius: 14px; font-size: 12px; font-weight: 700; background: ${overallSc.bg}; color: ${overallSc.text};">${overallSc.label}</div>
           </td>
         </tr>
       </table>
@@ -469,18 +490,18 @@ export default function OrdersPage() {
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
         <thead>
           <tr>
-            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: left; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 50%;">Açıklama</th>
-            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: center; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 15%;">Miktar</th>
-            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: right; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 15%;">Birim Fiyat</th>
-            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: right; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 20%;">Tutar</th>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: left; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 55%;">Ürün / Açıklama</th>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: center; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 20%;">Miktar</th>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: center; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 25%;">Durum</th>
           </tr>
         </thead>
         <tbody>
           ${itemRows}
           ${blankRowsHtml}
           <tr>
-            <td colspan="3" style="text-align: right; font-weight: 700; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 14px;">TOPLAM</td>
-            <td style="text-align: right; font-weight: 800; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; color: ${accent}; font-size: 15px;" class="mono">${fmt(order.total)} ${sym}</td>
+            <td style="text-align: right; font-weight: 700; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 13px;">TOPLAM KALEM</td>
+            <td style="text-align: center; font-weight: 800; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 15px;" class="mono">${order.items.reduce((s, i) => s + i.quantity, 0)}</td>
+            <td style="text-align: center; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 12px; font-weight: 600; color: #6b7280;">${order.items.length} kalem ürün</td>
           </tr>
         </tbody>
       </table>
@@ -1116,7 +1137,7 @@ export default function OrdersPage() {
                         className={`px-3 py-1.5 text-sm border rounded-lg flex items-center gap-1.5 font-medium text-white ${brand.buttonColor} hover:opacity-90`}
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        Sevk İrsaliyesi
+                        Teslimat Belgesi
                       </button>
                       <button
                         onClick={() => startEdit(order)}
