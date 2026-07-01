@@ -395,9 +395,12 @@ export default function OrdersPage() {
       iptal: { bg: '#f3f4f6', text: '#6b7280', label: 'İptal' },
     };
 
-    const logoUrl = brand.id === 'guclumutfak'
-      ? 'https://cdn.myikas.com/images/theme-images/4036443e-0fdf-43fc-9903-6a4ba22635d4/image_1080.webp'
-      : brand.logoDark || brand.logo;
+    const logoUrls: Record<string, string> = {
+      guclumutfak: 'https://cdn.myikas.com/images/theme-images/4036443e-0fdf-43fc-9903-6a4ba22635d4/image_1080.webp',
+      mutpro: '/logos/mutpro-mavi-logo.jpeg',
+      inoks: '/logos/inoks-logo.png',
+    };
+    const logoUrl = logoUrls[brand.id] || brand.logo;
 
     const itemRows = order.items.map((item, i) => {
       const sc = statusColors[item.status] || statusColors.siparis_alindi;
