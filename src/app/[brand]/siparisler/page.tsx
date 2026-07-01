@@ -502,9 +502,8 @@ export default function OrdersPage() {
           ${itemRows}
           ${blankRowsHtml}
           <tr>
-            <td style="text-align: right; font-weight: 700; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 13px;">TOPLAM</td>
-            <td style="text-align: center; font-weight: 800; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 15px;" class="mono">${order.items.length} Kalem</td>
-            <td style="text-align: center; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 12px; font-weight: 600; color: #6b7280;">Toplam ${order.items.reduce((s, i) => s + i.quantity, 0)} adet</td>
+            <td colspan="2" style="text-align: right; font-weight: 700; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 13px;">TOPLAM</td>
+            <td style="text-align: center; font-weight: 800; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 15px;">${order.items.length} Kalem</td>
           </tr>
         </tbody>
       </table>
