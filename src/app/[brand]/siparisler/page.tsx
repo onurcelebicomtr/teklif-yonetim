@@ -11,7 +11,7 @@ import {
 import {
   Plus, Search, Trash2, ChevronDown, ChevronUp, X, Package,
   Clock, AlertTriangle, CheckCircle, Truck, XCircle, Filter,
-  ClipboardList, Calendar,
+  ClipboardList, Calendar, FileText,
 } from 'lucide-react';
 
 const ALL_STATUSES: OrderStatus[] = [
@@ -377,6 +377,145 @@ export default function OrdersPage() {
   };
 
   const currencySymbol = formCurrency === 'EUR' ? '€' : formCurrency === 'USD' ? '$' : '₺';
+
+  const generateIrsaliye = (order: Order) => {
+    const sym = order.currency === 'EUR' ? '€' : order.currency === 'USD' ? '$' : '₺';
+    const now = new Date();
+    const todayFormatted = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+    const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const accent = brand.accentColor;
+
+    const itemRows = order.items.map((item, i) => `
+      <tr style="${i % 2 === 1 ? 'background-color: #f9f9f9;' : ''}">
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; font-size: 13px;">
+          <div style="font-weight: 600;">${item.name}</div>
+          ${item.sku ? `<div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">${item.sku}</div>` : ''}
+          ${item.description ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${item.description}</div>` : ''}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: center; font-size: 13px; font-weight: 500;">${item.quantity} ${item.unit}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${fmt(item.unit_price)} ${sym}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: right; font-size: 13px; font-weight: 600;">${fmt(item.total)} ${sym}</td>
+      </tr>
+    `).join('');
+
+    const blankRows = Math.max(0, 6 - order.items.length);
+    const blankRowsHtml = Array(blankRows).fill(`
+      <tr><td style="height: 40px; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td><td style="border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;"></td></tr>
+    `).join('');
+
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Sevk İrsaliyesi - ${order.order_no}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" />
+    <style>
+      @page { size: portrait; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+      body { padding: 0; background: #fff; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .invoice-box { max-width: 800px; margin: auto; padding: 35px 40px; position: relative; min-height: 100vh; }
+      .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
+      @media print {
+        body { padding: 0; }
+        .invoice-box { padding: 25px 30px; }
+        .no-print { display: none !important; }
+      }
+    </style></head><body>
+
+    <div class="no-print" style="text-align: center; padding: 15px;">
+      <button onclick="window.print()" style="padding: 10px 30px; background: ${accent}; color: white; border: none; border-radius: 6px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: Inter, sans-serif;">Yazdır / PDF İndir</button>
+    </div>
+
+    <div class="invoice-box">
+      <!-- HEADER -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px;">
+        <tr>
+          <td style="vertical-align: top; width: 50%;">
+            <div style="font-size: 28px; font-weight: 900; color: #111; letter-spacing: -0.5px; line-height: 1;">${brand.fullName}</div>
+            <div style="font-size: 11px; font-weight: 600; color: #6b7280; margin-top: 6px; border-top: 2px solid #111; padding-top: 4px; display: inline-block; letter-spacing: 1.5px; text-transform: uppercase;">${brand.slogan}</div>
+          </td>
+          <td style="vertical-align: top; width: 50%; text-align: right;">
+            <div style="font-size: 24px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px;">SEVK İRSALİYESİ</div>
+            <div style="font-size: 12px; color: #6b7280; line-height: 1.8; margin-top: 4px;">
+              <strong style="color: #374151;">Belge No:</strong> <span class="mono">${order.order_no}</span><br>
+              ${order.proposal_no ? `<strong style="color: #374151;">Teklif No:</strong> <span class="mono">${order.proposal_no}</span><br>` : ''}
+              <strong style="color: #374151;">İl Kodu:</strong> 34
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- MÜŞTERİ + TARİH -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px;">
+        <tr>
+          <td style="vertical-align: top; width: 55%; border: 1.5px solid ${accent}; padding: 16px; border-radius: 4px;">
+            <div style="font-size: 10px; color: ${accent}; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px;">Sayın (Alıcı Bilgileri)</div>
+            <div style="font-size: 14px; line-height: 1.7;">
+              <strong style="font-size: 15px;">${order.customer_name}</strong><br>
+              ${order.customer_address ? `${order.customer_address}<br>` : ''}
+              ${order.customer_city || ''}
+            </div>
+            ${order.customer_phone ? `<div style="margin-top: 10px; font-size: 12px; border-top: 1px dashed #e5e7eb; padding-top: 8px;"><strong>Tel:</strong> <span class="mono" style="font-size: 13px;">${order.customer_phone}</span></div>` : ''}
+          </td>
+          <td style="vertical-align: top; width: 40%; padding-left: 5%;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #6b7280; width: 50%;">Düzenleme Tarihi</td><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 500;" class="mono">${todayFormatted}</td></tr>
+              <tr><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #6b7280;">Fiili Sevk Tarihi</td><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 500;" class="mono">${todayFormatted}</td></tr>
+              <tr><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #6b7280;">Sevk Saati</td><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 500;" class="mono">${timeFormatted}</td></tr>
+              <tr><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #6b7280;">Sipariş Tarihi</td><td style="padding: 9px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 500;" class="mono">${order.order_date}</td></tr>
+              ${order.delivery_date ? `<tr><td style="padding: 9px 0; font-size: 13px; font-weight: 600; color: #6b7280;">Teslim Tarihi</td><td style="padding: 9px 0; font-size: 13px; text-align: right; font-weight: 500;" class="mono">${order.delivery_date}</td></tr>` : ''}
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <!-- ÜRÜN TABLOSU -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <thead>
+          <tr>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: left; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 50%;">Açıklama</th>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: center; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 15%;">Miktar</th>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: right; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 15%;">Birim Fiyat</th>
+            <th style="background: ${accent}; color: #fff; font-weight: 700; text-align: right; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid ${accent}; width: 20%;">Tutar</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+          ${blankRowsHtml}
+          <tr>
+            <td colspan="3" style="text-align: right; font-weight: 700; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 14px;">TOPLAM</td>
+            <td style="text-align: right; font-weight: 800; padding: 14px 12px; background: #f9fafb; border: 1px solid #e5e7eb; color: ${accent}; font-size: 15px;" class="mono">${fmt(order.total)} ${sym}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      ${order.notes ? `<div style="margin-bottom: 24px; padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px; color: #6b7280;"><strong style="color: #374151;">Not:</strong> ${order.notes}</div>` : ''}
+
+      <!-- İMZA ALANLARI -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 40px;">
+        <tr>
+          <td style="width: 50%; border: 1px solid #e5e7eb; padding: 18px; text-align: center; height: 110px; vertical-align: top; font-size: 12px; font-weight: 700; color: #6b7280; background: #fafafa; letter-spacing: 1px; text-transform: uppercase;">
+            Teslim Eden
+            <div style="margin-top: 55px; border-top: 1px dashed #d1d5db; width: 60%; margin-left: auto; margin-right: auto; padding-top: 6px; font-size: 11px; font-weight: 500; color: #9ca3af;">İmza / Kaşe</div>
+          </td>
+          <td style="width: 50%; border: 1px solid #e5e7eb; padding: 18px; text-align: center; height: 110px; vertical-align: top; font-size: 12px; font-weight: 700; color: #6b7280; background: #fafafa; letter-spacing: 1px; text-transform: uppercase;">
+            Teslim Alan
+            <div style="margin-top: 55px; border-top: 1px dashed #d1d5db; width: 60%; margin-left: auto; margin-right: auto; padding-top: 6px; font-size: 11px; font-weight: 500; color: #9ca3af;">İmza / Kaşe</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- ALT BİLGİ -->
+      <div style="position: absolute; bottom: 20px; left: 40px; right: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 10px; line-height: 1.6;">
+        <div style="font-weight: 600; color: #6b7280;">${brand.fullName}</div>
+        <div>${brand.address.join(' • ')} | ${brand.phone} | ${brand.email}</div>
+        <div style="margin-top: 3px;">Bu belge dijital ortamda oluşturulmuştur.</div>
+      </div>
+    </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -972,6 +1111,13 @@ export default function OrdersPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => generateIrsaliye(order)}
+                        className={`px-3 py-1.5 text-sm border rounded-lg flex items-center gap-1.5 font-medium text-white ${brand.buttonColor} hover:opacity-90`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Sevk İrsaliyesi
+                      </button>
                       <button
                         onClick={() => startEdit(order)}
                         className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
