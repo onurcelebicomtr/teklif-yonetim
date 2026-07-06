@@ -4,7 +4,7 @@ import { useParams, useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getBrand } from '@/lib/brands';
 import { useAppStore } from '@/lib/store';
-import { LayoutDashboard, FileText, Package, Users, Upload, ArrowLeft, Menu, X, Tag, ClipboardList, Wallet } from 'lucide-react';
+import { LayoutDashboard, FileText, Package, Users, Upload, ArrowLeft, Menu, X, Tag, ClipboardList, Wallet, Boxes } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BrandLayout({ children }: { children: React.ReactNode }) {
@@ -30,9 +30,12 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
     { href: `/${brandId}/urunler`, label: 'Ürün Yönetimi', icon: Upload },
     { href: `/${brandId}/siparisler`, label: 'Sipariş Takip', icon: ClipboardList },
     { href: `/${brandId}/kargo-etiket`, label: 'Kargo Etiketi', icon: Tag },
-    // Cari Takip yalnızca MutPro markasında görünür
+    // Cari Takip ve Stok Yönetimi yalnızca MutPro markasında görünür
     ...(brandId === 'mutpro'
-      ? [{ href: `/${brandId}/cari`, label: 'Cari Takip', icon: Wallet }]
+      ? [
+          { href: `/${brandId}/cari`, label: 'Cari Takip', icon: Wallet },
+          { href: `/${brandId}/stok`, label: 'Stok Yönetimi', icon: Boxes },
+        ]
       : []),
   ];
 
