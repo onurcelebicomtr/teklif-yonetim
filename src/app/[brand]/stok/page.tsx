@@ -6,7 +6,7 @@ import { useAppStore } from '@/lib/store';
 import {
   StokProduct, StokLocation, StokPack, LOCATION_LABELS, PACK_LABELS,
   storeTotal, warehouseTotal, grandTotal, numberFmt,
-  CURRENCIES, CURRENCY_SYMBOLS, SALE_MARKUP, moneyFmt, costToTRY,
+  CURRENCIES, CURRENCY_SYMBOLS, SALE_MARKUP, moneyFmt, costToTRY, netFromList,
 } from '@/lib/stok-types';
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
@@ -54,6 +54,8 @@ export default function StokPage() {
         warehouse_unboxed: Number(p.warehouse_unboxed) || 0,
         cost: Number(p.cost) || 0,
         cost_currency: p.cost_currency || 'TRY',
+        cost_list: Number(p.cost_list) || 0,
+        cost_discount: Number(p.cost_discount) || 0,
         sale_price: Number(p.sale_price) || 0,
         sale_manual: p.sale_manual === true,
       })));
@@ -68,8 +70,25 @@ export default function StokPage() {
 
   useEffect(() => { if (brandId === 'mutpro') load(); }, [brandId, load]);
 
-  // Döviz kurları (maliyet TL karşılığı için)
-  const rates = useAppStore((s) => s.rates);
+  // Döviz kurları — her açılışta doğrudan TCMB'den güncel çek (kayıtlı bayat değere güvenme)
+  const storeRates = useAppStore((s) => s.rates);
+  const setStoreRates = useAppStore((s) => s.setRates);
+  const [liveRates, setLiveRates] = useState<{ usd: number; eur: number; gbp: number } | null>(null);
+  const [rateDate, setRateDate] = useState('');
+  useEffect(() => {
+    fetch('/api/tcmb-kur', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.usd) {
+          const r = { usd: d.usd, eur: d.eur, gbp: d.gbp };
+          setLiveRates(r);
+          setStoreRates(r); // store'daki bayat değeri de güncelle
+          if (d.date) setRateDate(`${d.source || 'TCMB'} · ${d.date}`);
+        }
+      })
+      .catch(() => {});
+  }, [setStoreRates]);
+  const rates = liveRates || storeRates;
 
   // Teklif kataloğu (Ürün Yönetimi'ndeki ürünler) — yeni ürün eklerken otomatik doldurma
   const catalogProducts = useAppStore((s) => s.products);
@@ -349,7 +368,7 @@ export default function StokPage() {
       </div>
 
       {productModal.open && (
-        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} rates={rates} onAddList={addList} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
+        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} rates={rates} rateDate={rateDate} onAddList={addList} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
       )}
       {moveModal.open && moveModal.product && (
         <MovementModal product={moveModal.product} onClose={() => setMoveModal({ open: false })} onSubmit={doMovement} />
@@ -398,10 +417,10 @@ function StatCard({ icon, label, value, tone, small }: { icon: React.ReactNode; 
 }
 
 /* ============================ ÜRÜN MODALI ============================ */
-function ProductModal({ edit, brandOptions, catOptions, catalog, rates, onAddList, onClose, onSave }: {
+function ProductModal({ edit, brandOptions, catOptions, catalog, rates, rateDate, onAddList, onClose, onSave }: {
   edit?: StokProduct;
   brandOptions: string[]; catOptions: string[]; catalog: CatalogItem[];
-  rates: { usd: number; eur: number; gbp: number };
+  rates: { usd: number; eur: number; gbp: number }; rateDate?: string;
   onAddList: (type: 'brand' | 'category', name: string) => void;
   onClose: () => void;
   onSave: (rec: Partial<StokProduct>) => void;
@@ -410,29 +429,31 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, rates, onAddLis
     code: edit?.code || '', name: edit?.name || '', brand: edit?.brand || '', category: edit?.category || '', color: edit?.color || '',
     store_boxed: edit?.store_boxed ?? 0, store_unboxed: edit?.store_unboxed ?? 0,
     warehouse_boxed: edit?.warehouse_boxed ?? 0, warehouse_unboxed: edit?.warehouse_unboxed ?? 0,
-    cost: edit?.cost ?? 0, cost_currency: edit?.cost_currency || 'TRY',
+    cost_currency: edit?.cost_currency || 'TRY',
+    cost_list: edit?.cost_list ?? 0, cost_discount: edit?.cost_discount ?? 0,
     sale_price: edit?.sale_price ?? 0, sale_manual: edit?.sale_manual ?? false,
   });
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
 
-  const costTRY = costToTRY(f.cost, f.cost_currency, rates);
+  const netCost = netFromList(f.cost_list, f.cost_discount);       // net maliyet (para biriminde)
+  const costTRY = costToTRY(netCost, f.cost_currency, rates);      // net maliyet (₺)
 
-  // Satış fiyatı otomatik: maliyet(₺) + %25 — elle düzenlenmediyse
+  // Satış fiyatı otomatik: net maliyet(₺) + %25 — elle düzenlenmediyse
   useEffect(() => {
     if (!f.sale_manual) {
       setF((s) => ({ ...s, sale_price: Math.round(costTRY * SALE_MARKUP) }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f.cost, f.cost_currency, f.sale_manual, rates.usd, rates.eur]);
+  }, [f.cost_list, f.cost_discount, f.cost_currency, f.sale_manual, rates.usd, rates.eur]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.name.trim()) return;
-    onSave({ id: edit?.id, ...f });
+    onSave({ id: edit?.id, ...f, cost: netCost });
   };
 
   return (
-    <ModalShell title={edit ? 'Ürünü Düzenle' : 'Yeni Ürün Ekle'} icon={<Package className="w-4 h-4" />} onClose={onClose} wide>
+    <ModalShell title={edit ? 'Ürünü Düzenle' : 'Yeni Ürün Ekle'} icon={<Package className="w-4 h-4" />} onClose={onClose} xl>
       <form onSubmit={submit} className="space-y-4">
         {!edit && catalog.length > 0 && (
           <CatalogPicker
@@ -463,46 +484,72 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, rates, onAddLis
         </div>
 
         {/* Fiyatlandırma */}
-        <div className="rounded-xl border border-gray-100 p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Maliyet + para birimi */}
-          <div>
-            <label className="block text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider">Maliyet</label>
-            <div className="flex gap-1">
-              <input type="number" min="0" step="0.01" value={f.cost}
-                onChange={(e) => set('cost', Math.max(0, Number(e.target.value) || 0))}
-                className="in font-mono" placeholder="0" />
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+        <div className="rounded-xl border border-gray-100 overflow-hidden">
+          {/* Para birimi başlık */}
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Fiyatlandırma</span>
+              {rateDate && <span className="text-[9px] text-emerald-600 font-medium">Kur: {rateDate}</span>}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-gray-400 font-medium">Para Birimi</span>
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
                 {CURRENCIES.map((c) => (
                   <button type="button" key={c} onClick={() => set('cost_currency', c)}
-                    className={`px-2.5 text-xs font-bold transition-colors ${f.cost_currency === c ? 'text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
+                    className={`px-2.5 py-1 text-xs font-bold transition-colors ${f.cost_currency === c ? 'text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
                     style={f.cost_currency === c ? { background: NAVY } : {}}>
-                    {CURRENCY_SYMBOLS[c]}
+                    {CURRENCY_SYMBOLS[c]} {c}
                   </button>
                 ))}
               </div>
             </div>
-            {f.cost_currency !== 'TRY' && (
-              <p className="text-[10px] text-gray-500 mt-1.5">
-                ≈ <b className="font-mono text-gray-700">{moneyFmt.format(costTRY)} ₺</b>
-                <span className="text-gray-400"> · 1 {f.cost_currency} = {moneyFmt.format(f.cost_currency === 'USD' ? rates.usd : rates.eur)} ₺</span>
-              </p>
-            )}
           </div>
 
-          {/* Satış fiyatı */}
-          <div>
-            <label className="block text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
-              <span>Satış Fiyatı (₺)</span>
-              {f.sale_manual
-                ? <button type="button" onClick={() => set('sale_manual', false)} className="text-[9px] font-bold text-orange-600 hover:underline normal-case">↺ Otomatiğe dön</button>
-                : <span className="text-[9px] font-bold text-emerald-600 normal-case bg-emerald-50 px-1.5 py-0.5 rounded">Otomatik +%25</span>}
-            </label>
-            <input type="number" min="0" step="0.01" value={f.sale_price}
-              onChange={(e) => setF((s) => ({ ...s, sale_price: Math.max(0, Number(e.target.value) || 0), sale_manual: true }))}
-              className="in font-mono font-bold text-gray-800" placeholder="0" />
-            <p className="text-[10px] text-gray-400 mt-1.5">
-              {f.sale_manual ? 'Elle girildi.' : `Maliyet (₺) + %25 otomatik hesaplanıyor.`}
-            </p>
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* MALİYET: liste + iskonto */}
+            <div>
+              <label className="block text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider">Maliyet — Liste Fiyatı & İskonto</label>
+              <div className="flex gap-1.5">
+                <div className="relative flex-1">
+                  <input type="number" min="0" step="0.01" value={f.cost_list}
+                    onChange={(e) => set('cost_list', Math.max(0, Number(e.target.value) || 0))}
+                    className="in font-mono pr-7" placeholder="Liste fiyatı" />
+                  <span className="absolute right-2.5 top-2 text-gray-400 text-xs">{CURRENCY_SYMBOLS[f.cost_currency]}</span>
+                </div>
+                <div className="relative w-24">
+                  <input type="number" min="0" max="100" step="0.5" value={f.cost_discount}
+                    onChange={(e) => set('cost_discount', Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                    className="in font-mono pr-6" placeholder="İskonto" />
+                  <span className="absolute right-2.5 top-2 text-gray-400 text-xs">%</span>
+                </div>
+              </div>
+              <div className="mt-2 bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                <span className="text-gray-400">Net maliyet: </span>
+                <b className="font-mono text-gray-800">{moneyFmt.format(netCost)} {CURRENCY_SYMBOLS[f.cost_currency]}</b>
+                {f.cost_currency !== 'TRY' && (
+                  <span className="text-gray-500 block mt-0.5">
+                    ≈ <b className="font-mono text-gray-700">{moneyFmt.format(costTRY)} ₺</b>
+                    <span className="text-gray-400"> · 1 {f.cost_currency} = {moneyFmt.format(f.cost_currency === 'USD' ? rates.usd : rates.eur)} ₺</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* SATIŞ fiyatı */}
+            <div>
+              <label className="text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                <span>Satış Fiyatı (₺)</span>
+                {f.sale_manual
+                  ? <button type="button" onClick={() => set('sale_manual', false)} className="text-[9px] font-bold text-orange-600 hover:underline normal-case">↺ Otomatiğe dön</button>
+                  : <span className="text-[9px] font-bold text-emerald-600 normal-case bg-emerald-50 px-1.5 py-0.5 rounded">Otomatik +%25</span>}
+              </label>
+              <input type="number" min="0" step="0.01" value={f.sale_price}
+                onChange={(e) => setF((s) => ({ ...s, sale_price: Math.max(0, Number(e.target.value) || 0), sale_manual: true }))}
+                className="in font-mono font-bold text-lg text-gray-800" placeholder="0" />
+              <p className="text-[10px] text-gray-400 mt-2">
+                {f.sale_manual ? 'Elle girildi.' : 'Net maliyet (₺) + %25 otomatik.'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -799,11 +846,12 @@ function ListCol({ title, items, value, setValue, onAdd, onDelete }: {
 }
 
 /* ============================ ORTAK ============================ */
-function ModalShell({ title, icon, onClose, children, wide }: { title: string; icon: React.ReactNode; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+function ModalShell({ title, icon, onClose, children, wide, xl }: { title: string; icon: React.ReactNode; onClose: () => void; children: React.ReactNode; wide?: boolean; xl?: boolean }) {
+  const maxW = xl ? 'max-w-2xl' : wide ? 'max-w-lg' : 'max-w-md';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white w-full ${wide ? 'max-w-lg' : 'max-w-md'} rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col`}>
+      <div className={`relative bg-white w-full ${maxW} rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col`}>
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50 shrink-0">
           <h3 className="font-extrabold text-gray-800 flex items-center gap-2">
             <span className="text-white p-1.5 rounded-lg text-sm" style={{ background: NAVY }}>{icon}</span>{title}

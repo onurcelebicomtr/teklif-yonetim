@@ -37,12 +37,18 @@ export async function POST(req: NextRequest) {
     store_unboxed: Math.max(0, Math.trunc(Number(body.store_unboxed) || 0)),
     warehouse_boxed: Math.max(0, Math.trunc(Number(body.warehouse_boxed) || 0)),
     warehouse_unboxed: Math.max(0, Math.trunc(Number(body.warehouse_unboxed) || 0)),
-    cost: Math.max(0, Number(body.cost) || 0),
+    cost_list: Math.max(0, Number(body.cost_list) || 0),
+    cost_discount: Math.min(100, Math.max(0, Number(body.cost_discount) || 0)),
+    cost: 0, // aşağıda liste×iskonto'dan hesaplanır
     cost_currency: ['TRY', 'USD', 'EUR'].includes(body.cost_currency) ? body.cost_currency : 'TRY',
     sale_price: Math.max(0, Number(body.sale_price) || 0),
     sale_manual: body.sale_manual === true,
     updated_at: new Date().toISOString(),
   };
+  // Net maliyet: liste girildiyse liste×(1-iskonto), yoksa doğrudan gelen cost
+  record.cost = record.cost_list > 0
+    ? record.cost_list * (1 - record.cost_discount / 100)
+    : Math.max(0, Number(body.cost) || 0);
   if (!record.name) return Response.json({ error: 'Ürün adı gerekli.' }, { status: 400 });
   const { error } = await cariDb().from('stok_products').upsert(record);
   if (error) return Response.json({ error: error.message }, { status: 500 });

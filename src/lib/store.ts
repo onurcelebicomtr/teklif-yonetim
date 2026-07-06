@@ -396,7 +396,7 @@ export const useAppStore = create<AppState>()(
           currentItems: s.currentItems.map((i) => (i.id === id ? { ...i, ...data } : i)),
         })),
 
-      rates: { usd: 38, eur: 41, gbp: 48 },
+      rates: { usd: 46.8, eur: 53.5, gbp: 62.5 },
       setRates: (rates) => set({ rates }),
     }),
     {

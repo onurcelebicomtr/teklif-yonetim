@@ -32,26 +32,26 @@ export async function GET() {
     };
 
     const rates = {
-      usd: parseRate(usdSelling) || parseRate(usdMatch) || 38,
-      eur: parseRate(eurSelling) || parseRate(eurMatch) || 41,
-      gbp: parseRate(gbpSelling) || parseRate(gbpMatch) || 48,
-      usd_buying: parseRate(usdMatch) || 38,
-      eur_buying: parseRate(eurMatch) || 41,
-      gbp_buying: parseRate(gbpMatch) || 48,
+      usd: parseRate(usdSelling) || parseRate(usdMatch) || 46.8,
+      eur: parseRate(eurSelling) || parseRate(eurMatch) || 53.5,
+      gbp: parseRate(gbpSelling) || parseRate(gbpMatch) || 62.5,
+      usd_buying: parseRate(usdMatch) || 46.7,
+      eur_buying: parseRate(eurMatch) || 53.3,
+      gbp_buying: parseRate(gbpMatch) || 62.2,
       source: 'TCMB',
       date: new Date().toLocaleDateString('tr-TR'),
     };
 
     return NextResponse.json(rates);
   } catch (error) {
-    // Fallback değerler
+    // Fallback değerler (TCMB'ye ulaşılamazsa)
     return NextResponse.json({
-      usd: 38,
-      eur: 41,
-      gbp: 48,
-      usd_buying: 37.8,
-      eur_buying: 40.8,
-      gbp_buying: 47.5,
+      usd: 46.8,
+      eur: 53.5,
+      gbp: 62.5,
+      usd_buying: 46.7,
+      eur_buying: 53.3,
+      gbp_buying: 62.2,
       source: 'Fallback',
       date: new Date().toLocaleDateString('tr-TR'),
     });

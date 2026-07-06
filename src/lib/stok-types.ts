@@ -10,8 +10,10 @@ export interface StokProduct {
   store_unboxed: number;    // Mağaza Kutusuz
   warehouse_boxed: number;  // Alt Depo Kutulu
   warehouse_unboxed: number;// Alt Depo Kutusuz
-  cost: number;             // maliyet (girildiği para biriminde)
+  cost: number;             // net maliyet (girildiği para biriminde) = liste × (1 - iskonto/100)
   cost_currency: string;    // 'TRY' | 'USD' | 'EUR'
+  cost_list: number;        // liste fiyatı (girildiği para biriminde)
+  cost_discount: number;    // iskonto yüzdesi
   sale_price: number;       // satış fiyatı (₺)
   sale_manual: boolean;     // satış elle mi girildi
 }
@@ -27,6 +29,10 @@ export const costToTRY = (cost: number, currency: string, rates: { usd: number; 
   const rate = currency === 'USD' ? rates.usd : currency === 'EUR' ? rates.eur : 1;
   return (Number(cost) || 0) * rate;
 };
+
+// Liste fiyatı + iskonto'dan net tutar
+export const netFromList = (list: number, discountPct: number) =>
+  Math.max(0, (Number(list) || 0) * (1 - Math.min(100, Math.max(0, Number(discountPct) || 0)) / 100));
 
 // Stok kovaları — yer + paket türü
 export type StokLocation = 'store' | 'warehouse';
