@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useAppStore } from '@/lib/store';
 import {
   StokProduct, StokLocation, StokPack, LOCATION_LABELS, PACK_LABELS,
   storeTotal, warehouseTotal, grandTotal, numberFmt,
@@ -9,8 +10,11 @@ import {
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
   ArrowRightLeft, ArrowDownToLine, ArrowUpFromLine, Loader2, ShieldCheck, Boxes,
-  Tag, Layers, AlertTriangle, Printer,
+  Tag, Layers, AlertTriangle, Printer, PackageSearch,
 } from 'lucide-react';
+
+// Teklif kataloğundan hafif ürün kaydı (otomatik doldurma için)
+type CatalogItem = { name: string; sku: string; manufacturer: string; category: string };
 
 const MUTPRO_LOGO = '/logos/mutpro-mavi-logo.jpeg';
 const NAVY = '#040023';
@@ -58,6 +62,20 @@ export default function StokPage() {
   }, []);
 
   useEffect(() => { if (brandId === 'mutpro') load(); }, [brandId, load]);
+
+  // Teklif kataloğu (Ürün Yönetimi'ndeki ürünler) — yeni ürün eklerken otomatik doldurma
+  const catalogProducts = useAppStore((s) => s.products);
+  const catalog: CatalogItem[] = useMemo(
+    () => catalogProducts
+      .filter((p) => p.brand_id === 'mutpro')
+      .map((p) => ({
+        name: p.name,
+        sku: p.sku || '',
+        manufacturer: p.manufacturer || '',
+        category: (p.category || '').split('>')[0].trim(),
+      })),
+    [catalogProducts]
+  );
 
   // Filtreler
   const [search, setSearch] = useState('');
@@ -323,7 +341,7 @@ export default function StokPage() {
       </div>
 
       {productModal.open && (
-        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
+        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
       )}
       {moveModal.open && moveModal.product && (
         <MovementModal product={moveModal.product} onClose={() => setMoveModal({ open: false })} onSubmit={doMovement} />
@@ -372,9 +390,9 @@ function StatCard({ icon, label, value, tone, small }: { icon: React.ReactNode; 
 }
 
 /* ============================ ÜRÜN MODALI ============================ */
-function ProductModal({ edit, brandOptions, catOptions, onClose, onSave }: {
+function ProductModal({ edit, brandOptions, catOptions, catalog, onClose, onSave }: {
   edit?: StokProduct;
-  brandOptions: string[]; catOptions: string[];
+  brandOptions: string[]; catOptions: string[]; catalog: CatalogItem[];
   onClose: () => void;
   onSave: (rec: Partial<StokProduct>) => void;
 }) {
@@ -394,6 +412,12 @@ function ProductModal({ edit, brandOptions, catOptions, onClose, onSave }: {
   return (
     <ModalShell title={edit ? 'Ürünü Düzenle' : 'Yeni Ürün Ekle'} icon={<Package className="w-4 h-4" />} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-4">
+        {!edit && catalog.length > 0 && (
+          <CatalogPicker
+            catalog={catalog}
+            onPick={(c) => setF((s) => ({ ...s, code: c.code, name: c.name, brand: c.brand, category: c.category }))}
+          />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <L label="Ürün Kodu"><input value={f.code} onChange={(e) => set('code', e.target.value)} className="in" placeholder="HS-213" /></L>
           <L label="Renk"><input value={f.color} onChange={(e) => set('color', e.target.value)} className="in" placeholder="Siyah" /></L>
@@ -430,6 +454,61 @@ function NumF({ label, v, on }: { label: string; v: number; on: (v: number) => v
     <div>
       <label className="block text-[9px] text-gray-400 font-bold text-center mb-1">{label}</label>
       <input type="number" min="0" value={v} onChange={(e) => on(Math.max(0, parseInt(e.target.value) || 0))} className="in text-center font-mono font-bold" />
+    </div>
+  );
+}
+
+// Teklif kataloğundan ürün seçip formu otomatik doldurur
+function CatalogPicker({ catalog, onPick }: {
+  catalog: CatalogItem[];
+  onPick: (c: { code: string; name: string; brand: string; category: string }) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const results = useMemo(() => {
+    const term = q.toLowerCase().trim();
+    if (term.length < 2) return [];
+    return catalog
+      .filter((c) => `${c.name} ${c.sku} ${c.manufacturer}`.toLowerCase().includes(term))
+      .slice(0, 8);
+  }, [q, catalog]);
+
+  return (
+    <div className="relative bg-orange-50/60 border border-orange-100 rounded-xl p-3">
+      <label className="block text-[10px] font-bold text-orange-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+        <PackageSearch className="w-3.5 h-3.5" /> Hazır kataloğdan seç (isteğe bağlı)
+      </label>
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+        <input
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Teklif ürünlerinde ara: ad, kod veya marka..."
+          className="in pl-9"
+        />
+      </div>
+      {open && q.trim().length >= 2 && (
+        <div className="absolute z-20 left-3 right-3 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto">
+          {results.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-gray-400">Eşleşen ürün yok.</div>
+          ) : results.map((c, i) => (
+            <button
+              type="button" key={i}
+              onClick={() => {
+                onPick({ code: c.sku.split(',')[0].trim(), name: c.name, brand: c.manufacturer, category: c.category });
+                setQ(''); setOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-orange-50 border-b border-gray-50 last:border-0"
+            >
+              <div className="text-sm font-medium text-gray-800 leading-tight">{c.name}</div>
+              <div className="text-[10px] text-gray-400">{[c.sku, c.manufacturer, c.category].filter(Boolean).join(' • ')}</div>
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="text-[10px] text-orange-600/70 mt-1.5">Seçince kod, ad, marka ve kategori otomatik dolar; stok adetlerini sen girersin.</p>
     </div>
   );
 }
