@@ -669,8 +669,8 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
 
         {/* Sağ: özet + ekstre */}
         <div className="space-y-4">
-          {/* Özet kartlar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Özet kartlar — sayfa kaydırılırken üstte yapışık kalır */}
+          <div className="sticky top-[112px] z-10 bg-gray-50 py-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <SummaryCard label={`Dönem Borç (${FILTER_LABELS[dateFilter]})`} value={period.debt} accent="from-blue-400 to-blue-600" />
             <SummaryCard label={`Dönem Alacak/Tah.`} value={period.credit} accent="from-emerald-400 to-emerald-600" />
             <BalanceCard net={overall.net} />
