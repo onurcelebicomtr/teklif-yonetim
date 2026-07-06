@@ -437,14 +437,15 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, rates, rateDate
 
   const netCost = netFromList(f.cost_list, f.cost_discount);       // net maliyet (para biriminde)
   const costTRY = costToTRY(netCost, f.cost_currency, rates);      // net maliyet (₺)
+  const salePriceTRY = costToTRY(f.sale_price, f.cost_currency, rates); // satış (₺ karşılığı)
 
-  // Satış fiyatı otomatik: net maliyet(₺) + %25 — elle düzenlenmediyse
+  // Satış fiyatı otomatik: net maliyet + %25 — maliyetle AYNI para biriminde, elle düzenlenmediyse
   useEffect(() => {
     if (!f.sale_manual) {
-      setF((s) => ({ ...s, sale_price: Math.round(costTRY * SALE_MARKUP) }));
+      setF((s) => ({ ...s, sale_price: Math.round(netCost * SALE_MARKUP * 100) / 100 }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f.cost_list, f.cost_discount, f.cost_currency, f.sale_manual, rates.usd, rates.eur]);
+  }, [f.cost_list, f.cost_discount, f.sale_manual]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -535,20 +536,26 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, rates, rateDate
               </div>
             </div>
 
-            {/* SATIŞ fiyatı */}
+            {/* SATIŞ fiyatı — maliyetle aynı para biriminde */}
             <div>
               <label className="text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
-                <span>Satış Fiyatı (₺)</span>
+                <span>Satış Fiyatı ({CURRENCY_SYMBOLS[f.cost_currency]} {f.cost_currency})</span>
                 {f.sale_manual
                   ? <button type="button" onClick={() => set('sale_manual', false)} className="text-[9px] font-bold text-orange-600 hover:underline normal-case">↺ Otomatiğe dön</button>
                   : <span className="text-[9px] font-bold text-emerald-600 normal-case bg-emerald-50 px-1.5 py-0.5 rounded">Otomatik +%25</span>}
               </label>
-              <input type="number" min="0" step="0.01" value={f.sale_price}
-                onChange={(e) => setF((s) => ({ ...s, sale_price: Math.max(0, Number(e.target.value) || 0), sale_manual: true }))}
-                className="in font-mono font-bold text-lg text-gray-800" placeholder="0" />
-              <p className="text-[10px] text-gray-400 mt-2">
-                {f.sale_manual ? 'Elle girildi.' : 'Net maliyet (₺) + %25 otomatik.'}
-              </p>
+              <div className="relative">
+                <input type="number" min="0" step="0.01" value={f.sale_price}
+                  onChange={(e) => setF((s) => ({ ...s, sale_price: Math.max(0, Number(e.target.value) || 0), sale_manual: true }))}
+                  className="in font-mono font-bold text-lg text-gray-800 pr-7" placeholder="0" />
+                <span className="absolute right-2.5 top-3 text-gray-400 text-sm">{CURRENCY_SYMBOLS[f.cost_currency]}</span>
+              </div>
+              <div className="mt-2 text-[10px] text-gray-400">
+                {f.cost_currency !== 'TRY' && (
+                  <span className="text-gray-500 block">≈ <b className="font-mono text-gray-700">{moneyFmt.format(salePriceTRY)} ₺</b></span>
+                )}
+                {f.sale_manual ? 'Elle girildi.' : 'Net maliyet + %25 otomatik.'}
+              </div>
             </div>
           </div>
         </div>
