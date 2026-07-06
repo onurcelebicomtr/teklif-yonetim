@@ -6,6 +6,7 @@ import { useAppStore } from '@/lib/store';
 import {
   StokProduct, StokLocation, StokPack, LOCATION_LABELS, PACK_LABELS,
   storeTotal, warehouseTotal, grandTotal, numberFmt,
+  CURRENCIES, CURRENCY_SYMBOLS, SALE_MARKUP, moneyFmt, costToTRY,
 } from '@/lib/stok-types';
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
@@ -51,6 +52,10 @@ export default function StokPage() {
         store_unboxed: Number(p.store_unboxed) || 0,
         warehouse_boxed: Number(p.warehouse_boxed) || 0,
         warehouse_unboxed: Number(p.warehouse_unboxed) || 0,
+        cost: Number(p.cost) || 0,
+        cost_currency: p.cost_currency || 'TRY',
+        sale_price: Number(p.sale_price) || 0,
+        sale_manual: p.sale_manual === true,
       })));
       setBrands(data.brands || []);
       setCategories(data.categories || []);
@@ -62,6 +67,9 @@ export default function StokPage() {
   }, []);
 
   useEffect(() => { if (brandId === 'mutpro') load(); }, [brandId, load]);
+
+  // Döviz kurları (maliyet TL karşılığı için)
+  const rates = useAppStore((s) => s.rates);
 
   // Teklif kataloğu (Ürün Yönetimi'ndeki ürünler) — yeni ürün eklerken otomatik doldurma
   const catalogProducts = useAppStore((s) => s.products);
@@ -341,7 +349,7 @@ export default function StokPage() {
       </div>
 
       {productModal.open && (
-        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} onAddList={addList} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
+        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} rates={rates} onAddList={addList} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
       )}
       {moveModal.open && moveModal.product && (
         <MovementModal product={moveModal.product} onClose={() => setMoveModal({ open: false })} onSubmit={doMovement} />
@@ -390,9 +398,10 @@ function StatCard({ icon, label, value, tone, small }: { icon: React.ReactNode; 
 }
 
 /* ============================ ÜRÜN MODALI ============================ */
-function ProductModal({ edit, brandOptions, catOptions, catalog, onAddList, onClose, onSave }: {
+function ProductModal({ edit, brandOptions, catOptions, catalog, rates, onAddList, onClose, onSave }: {
   edit?: StokProduct;
   brandOptions: string[]; catOptions: string[]; catalog: CatalogItem[];
+  rates: { usd: number; eur: number; gbp: number };
   onAddList: (type: 'brand' | 'category', name: string) => void;
   onClose: () => void;
   onSave: (rec: Partial<StokProduct>) => void;
@@ -401,8 +410,20 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, onAddList, onCl
     code: edit?.code || '', name: edit?.name || '', brand: edit?.brand || '', category: edit?.category || '', color: edit?.color || '',
     store_boxed: edit?.store_boxed ?? 0, store_unboxed: edit?.store_unboxed ?? 0,
     warehouse_boxed: edit?.warehouse_boxed ?? 0, warehouse_unboxed: edit?.warehouse_unboxed ?? 0,
+    cost: edit?.cost ?? 0, cost_currency: edit?.cost_currency || 'TRY',
+    sale_price: edit?.sale_price ?? 0, sale_manual: edit?.sale_manual ?? false,
   });
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
+
+  const costTRY = costToTRY(f.cost, f.cost_currency, rates);
+
+  // Satış fiyatı otomatik: maliyet(₺) + %25 — elle düzenlenmediyse
+  useEffect(() => {
+    if (!f.sale_manual) {
+      setF((s) => ({ ...s, sale_price: Math.round(costTRY * SALE_MARKUP) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.cost, f.cost_currency, f.sale_manual, rates.usd, rates.eur]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,6 +461,51 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, onAddList, onCl
             <NumF label="Kutusuz" v={f.warehouse_unboxed} on={(v) => set('warehouse_unboxed', v)} />
           </div>
         </div>
+
+        {/* Fiyatlandırma */}
+        <div className="rounded-xl border border-gray-100 p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Maliyet + para birimi */}
+          <div>
+            <label className="block text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider">Maliyet</label>
+            <div className="flex gap-1">
+              <input type="number" min="0" step="0.01" value={f.cost}
+                onChange={(e) => set('cost', Math.max(0, Number(e.target.value) || 0))}
+                className="in font-mono" placeholder="0" />
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+                {CURRENCIES.map((c) => (
+                  <button type="button" key={c} onClick={() => set('cost_currency', c)}
+                    className={`px-2.5 text-xs font-bold transition-colors ${f.cost_currency === c ? 'text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
+                    style={f.cost_currency === c ? { background: NAVY } : {}}>
+                    {CURRENCY_SYMBOLS[c]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {f.cost_currency !== 'TRY' && (
+              <p className="text-[10px] text-gray-500 mt-1.5">
+                ≈ <b className="font-mono text-gray-700">{moneyFmt.format(costTRY)} ₺</b>
+                <span className="text-gray-400"> · 1 {f.cost_currency} = {moneyFmt.format(f.cost_currency === 'USD' ? rates.usd : rates.eur)} ₺</span>
+              </p>
+            )}
+          </div>
+
+          {/* Satış fiyatı */}
+          <div>
+            <label className="block text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
+              <span>Satış Fiyatı (₺)</span>
+              {f.sale_manual
+                ? <button type="button" onClick={() => set('sale_manual', false)} className="text-[9px] font-bold text-orange-600 hover:underline normal-case">↺ Otomatiğe dön</button>
+                : <span className="text-[9px] font-bold text-emerald-600 normal-case bg-emerald-50 px-1.5 py-0.5 rounded">Otomatik +%25</span>}
+            </label>
+            <input type="number" min="0" step="0.01" value={f.sale_price}
+              onChange={(e) => setF((s) => ({ ...s, sale_price: Math.max(0, Number(e.target.value) || 0), sale_manual: true }))}
+              className="in font-mono font-bold text-gray-800" placeholder="0" />
+            <p className="text-[10px] text-gray-400 mt-1.5">
+              {f.sale_manual ? 'Elle girildi.' : `Maliyet (₺) + %25 otomatik hesaplanıyor.`}
+            </p>
+          </div>
+        </div>
+
         <div className="flex justify-end gap-3 pt-1">
           <button type="button" onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-200">İptal</button>
           <button type="submit" className="px-5 py-2.5 text-white rounded-lg text-sm font-bold" style={{ background: NAVY }}>Kaydet</button>

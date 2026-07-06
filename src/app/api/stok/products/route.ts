@@ -37,6 +37,10 @@ export async function POST(req: NextRequest) {
     store_unboxed: Math.max(0, Math.trunc(Number(body.store_unboxed) || 0)),
     warehouse_boxed: Math.max(0, Math.trunc(Number(body.warehouse_boxed) || 0)),
     warehouse_unboxed: Math.max(0, Math.trunc(Number(body.warehouse_unboxed) || 0)),
+    cost: Math.max(0, Number(body.cost) || 0),
+    cost_currency: ['TRY', 'USD', 'EUR'].includes(body.cost_currency) ? body.cost_currency : 'TRY',
+    sale_price: Math.max(0, Number(body.sale_price) || 0),
+    sale_manual: body.sale_manual === true,
     updated_at: new Date().toISOString(),
   };
   if (!record.name) return Response.json({ error: 'Ürün adı gerekli.' }, { status: 400 });
