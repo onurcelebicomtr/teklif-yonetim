@@ -341,7 +341,7 @@ export default function StokPage() {
       </div>
 
       {productModal.open && (
-        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
+        <ProductModal edit={productModal.edit} brandOptions={brandOptions} catOptions={catOptions} catalog={catalog} onAddList={addList} onClose={() => setProductModal({ open: false })} onSave={saveProduct} />
       )}
       {moveModal.open && moveModal.product && (
         <MovementModal product={moveModal.product} onClose={() => setMoveModal({ open: false })} onSubmit={doMovement} />
@@ -390,9 +390,10 @@ function StatCard({ icon, label, value, tone, small }: { icon: React.ReactNode; 
 }
 
 /* ============================ ÜRÜN MODALI ============================ */
-function ProductModal({ edit, brandOptions, catOptions, catalog, onClose, onSave }: {
+function ProductModal({ edit, brandOptions, catOptions, catalog, onAddList, onClose, onSave }: {
   edit?: StokProduct;
   brandOptions: string[]; catOptions: string[]; catalog: CatalogItem[];
+  onAddList: (type: 'brand' | 'category', name: string) => void;
   onClose: () => void;
   onSave: (rec: Partial<StokProduct>) => void;
 }) {
@@ -424,8 +425,8 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, onClose, onSave
         </div>
         <L label="Ürün Adı *"><input value={f.name} onChange={(e) => set('name', e.target.value)} required autoFocus className="in" placeholder="Ürün adı" /></L>
         <div className="grid grid-cols-2 gap-3">
-          <L label="Marka"><input list="brandlist" value={f.brand} onChange={(e) => set('brand', e.target.value)} className="in" placeholder="Seç veya yaz" /><datalist id="brandlist">{brandOptions.map((b) => <option key={b} value={b} />)}</datalist></L>
-          <L label="Kategori"><input list="catlist" value={f.category} onChange={(e) => set('category', e.target.value)} className="in" placeholder="Seç veya yaz" /><datalist id="catlist">{catOptions.map((c) => <option key={c} value={c} />)}</datalist></L>
+          <L label="Marka"><ComboAdd value={f.brand} onChange={(v) => set('brand', v)} options={brandOptions} onCreate={(n) => onAddList('brand', n)} placeholder="Seç, yaz veya + ekle" /></L>
+          <L label="Kategori"><ComboAdd value={f.category} onChange={(v) => set('category', v)} options={catOptions} onCreate={(n) => onAddList('category', n)} placeholder="Seç, yaz veya + ekle" /></L>
         </div>
         <div className="rounded-xl border border-gray-100 overflow-hidden">
           <div className="grid grid-cols-2 text-center text-[10px] font-bold uppercase tracking-wider">
@@ -486,7 +487,8 @@ function CatalogPicker({ catalog, onPick }: {
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           placeholder="Teklif ürünlerinde ara: ad, kod veya marka..."
-          className="in pl-9"
+          className="in"
+          style={{ paddingLeft: '2.25rem' }}
         />
       </div>
       {open && q.trim().length >= 2 && (
@@ -509,6 +511,56 @@ function CatalogPicker({ catalog, onPick }: {
         </div>
       )}
       <p className="text-[10px] text-orange-600/70 mt-1.5">Seçince kod, ad, marka ve kategori otomatik dolar; stok adetlerini sen girersin.</p>
+    </div>
+  );
+}
+
+// Marka/Kategori için: mevcuttan seç veya anında yeni ekle
+function ComboAdd({ value, onChange, options, onCreate, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  onCreate: (name: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const term = (value || '').toLowerCase().trim();
+  const filtered = useMemo(() => options.filter((o) => o.toLowerCase().includes(term)).slice(0, 30), [options, term]);
+  const exact = options.some((o) => o.toLowerCase() === term);
+  const canCreate = term.length > 0 && !exact;
+
+  return (
+    <div className="relative">
+      <input
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder={placeholder}
+        className="in"
+      />
+      {open && (filtered.length > 0 || canCreate) && (
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-52 overflow-auto">
+          {canCreate && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { const n = value.trim(); onChange(n); onCreate(n); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm font-bold text-orange-600 hover:bg-orange-50 flex items-center gap-1.5 border-b border-gray-100"
+            >
+              <Plus className="w-3.5 h-3.5" /> “{value.trim()}” ekle
+            </button>
+          )}
+          {filtered.map((o) => (
+            <button
+              type="button" key={o}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onChange(o); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >{o}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
