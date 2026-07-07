@@ -11,7 +11,7 @@ import {
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
   ArrowRightLeft, ArrowDownToLine, ArrowUpFromLine, Loader2, ShieldCheck, Boxes,
-  Tag, Layers, AlertTriangle, Printer, PackageSearch, Coins, TrendingUp,
+  Tag, Layers, AlertTriangle, Printer, PackageSearch, Coins,
 } from 'lucide-react';
 
 // Teklif kataloğundan hafif ürün kaydı (otomatik doldurma için)
@@ -286,11 +286,13 @@ export default function StokPage() {
           <StatCard icon={<Layers className="w-5 h-5" />} label="Kutulu / Kutusuz" value={`${numberFmt.format(totals.boxed)} / ${numberFmt.format(totals.unboxed)}`} tone="green" small />
         </div>
 
-        {/* Stok değeri — girdi/çıktı oldukça güncellenir (birim × adet, ₺) */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-2 py-3 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-          <ValueItem icon={<Coins className="w-4 h-4" />} label="Toplam Stok Maliyeti" value={moneyFmt.format(totals.costValue)} tone="text-gray-800" bg="bg-gray-100 text-gray-600" />
-          <ValueItem icon={<TrendingUp className="w-4 h-4" />} label="Toplam Satış Değeri" value={moneyFmt.format(totals.saleValue)} tone="text-emerald-600" bg="bg-emerald-50 text-emerald-600" />
-          <ValueItem icon={<Boxes className="w-4 h-4" />} label="Potansiyel Kâr" value={moneyFmt.format(totals.saleValue - totals.costValue)} tone="text-orange-600" bg="bg-orange-50 text-orange-600" />
+        {/* Toplam stok maliyeti — girdi/çıktı oldukça güncellenir (birim × adet, ₺) */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-gray-100 text-gray-600"><Coins className="w-5 h-5" /></div>
+          <div>
+            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Toplam Stok Maliyeti</div>
+            <div className="text-2xl font-extrabold font-mono text-gray-800">{moneyFmt.format(totals.costValue)} ₺</div>
+          </div>
         </div>
 
         {/* Filtreler + tablo */}
@@ -445,18 +447,6 @@ function ToolBtn({ onClick, icon, label, tone }: { onClick: () => void; icon: Re
     <button onClick={onClick} className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium border rounded-lg transition-colors ${cls}`}>
       {icon}<span className="hidden md:inline">{label}</span>
     </button>
-  );
-}
-
-function ValueItem({ icon, label, value, tone, bg }: { icon: React.ReactNode; label: string; value: string; tone: string; bg: string }) {
-  return (
-    <div className="flex items-center gap-3 px-3 py-1.5">
-      <div className={`p-2 rounded-lg ${bg}`}>{icon}</div>
-      <div className="min-w-0">
-        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate">{label}</div>
-        <div className={`text-lg font-extrabold font-mono ${tone}`}>{value} ₺</div>
-      </div>
-    </div>
   );
 }
 
