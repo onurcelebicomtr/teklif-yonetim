@@ -109,6 +109,7 @@ export default function StokPage() {
   const [fBrand, setFBrand] = useState('');
   const [fCat, setFCat] = useState('');
   const [fPack, setFPack] = useState<'' | StokPack>('');
+  const [locFilter, setLocFilter] = useState<'' | StokLocation>(''); // kart tıklamasıyla mağaza/depo filtresi
 
   // Modallar
   const [productModal, setProductModal] = useState<{ open: boolean; edit?: StokProduct }>({ open: false });
@@ -131,6 +132,8 @@ export default function StokPage() {
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
     return products.filter((p) => {
+      if (locFilter === 'store' && storeTotal(p) === 0) return false;
+      if (locFilter === 'warehouse' && warehouseTotal(p) === 0) return false;
       if (fBrand && p.brand !== fBrand) return false;
       if (fCat && p.category !== fCat) return false;
       if (fPack === 'boxed' && p.store_boxed + p.warehouse_boxed === 0) return false;
@@ -141,7 +144,7 @@ export default function StokPage() {
       }
       return true;
     });
-  }, [products, search, fBrand, fCat, fPack]);
+  }, [products, search, fBrand, fCat, fPack, locFilter]);
 
   const totals = useMemo(() => {
     let store = 0, warehouse = 0, boxed = 0, unboxed = 0;
@@ -267,9 +270,12 @@ export default function StokPage() {
       <div className="p-4 lg:p-6 space-y-5">
         {/* Özet kartlar — sayfa kaydırılırken üstte yapışık kalır */}
         <div className="sticky top-[112px] z-10 bg-gray-50 py-2 grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard icon={<Boxes className="w-5 h-5" />} label="Toplam Çeşit" value={numberFmt.format(totals.kinds)} tone="navy" />
-          <StatCard icon={<Store className="w-5 h-5" />} label="Mağaza Stok" value={numberFmt.format(totals.store)} tone="blue" />
-          <StatCard icon={<Warehouse className="w-5 h-5" />} label="Alt Depo Stok" value={numberFmt.format(totals.warehouse)} tone="purple" />
+          <StatCard icon={<Boxes className="w-5 h-5" />} label="Toplam Çeşit" value={numberFmt.format(totals.kinds)} tone="navy"
+            onClick={locFilter ? () => setLocFilter('') : undefined} />
+          <StatCard icon={<Store className="w-5 h-5" />} label="Mağaza Stok" value={numberFmt.format(totals.store)} tone="blue"
+            onClick={() => setLocFilter((v) => (v === 'store' ? '' : 'store'))} active={locFilter === 'store'} />
+          <StatCard icon={<Warehouse className="w-5 h-5" />} label="Alt Depo Stok" value={numberFmt.format(totals.warehouse)} tone="purple"
+            onClick={() => setLocFilter((v) => (v === 'warehouse' ? '' : 'warehouse'))} active={locFilter === 'warehouse'} />
           <StatCard icon={<Package className="w-5 h-5" />} label="Toplam Adet" value={numberFmt.format(totals.total)} tone="orange" />
           <StatCard icon={<Layers className="w-5 h-5" />} label="Kutulu / Kutusuz" value={`${numberFmt.format(totals.boxed)} / ${numberFmt.format(totals.unboxed)}`} tone="green" small />
         </div>
@@ -335,6 +341,20 @@ export default function StokPage() {
                             <div className="font-semibold text-gray-800 leading-tight">{p.name}</div>
                             <div className="text-[10px] text-gray-400">{p.code}{p.color ? ` • ${p.color}` : ''}</div>
                             <div className="text-[10px] text-gray-400 md:hidden">{p.brand} {p.category ? `• ${p.category}` : ''}</div>
+                            {(p.sale_price > 0 || p.cost > 0) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px]">
+                                {p.sale_price > 0 && (
+                                  <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                    Satış: {moneyFmt.format(p.sale_price)} {CURRENCY_SYMBOLS[p.cost_currency] || '₺'}
+                                  </span>
+                                )}
+                                {p.cost > 0 && (
+                                  <span className="text-gray-400">
+                                    Maliyet: {moneyFmt.format(p.cost)} {CURRENCY_SYMBOLS[p.cost_currency] || '₺'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -401,19 +421,22 @@ function ToolBtn({ onClick, icon, label, tone }: { onClick: () => void; icon: Re
   );
 }
 
-function StatCard({ icon, label, value, tone, small }: { icon: React.ReactNode; label: string; value: string; tone: string; small?: boolean }) {
+function StatCard({ icon, label, value, tone, small, onClick, active }: { icon: React.ReactNode; label: string; value: string; tone: string; small?: boolean; onClick?: () => void; active?: boolean }) {
   const tones: Record<string, string> = {
     navy: 'from-slate-700 to-slate-900', blue: 'from-blue-500 to-blue-700',
     purple: 'from-purple-500 to-purple-700', orange: 'from-orange-500 to-amber-600',
     green: 'from-emerald-500 to-teal-700',
   };
-  return (
-    <div className={`bg-gradient-to-br ${tones[tone]} text-white p-4 rounded-2xl shadow relative overflow-hidden`}>
+  const cls = `bg-gradient-to-br ${tones[tone]} text-white p-4 rounded-2xl shadow relative overflow-hidden text-left w-full ${onClick ? 'cursor-pointer transition hover:brightness-110 active:scale-[0.98]' : ''} ${active ? 'ring-4 ring-offset-2 ring-offset-gray-50 ring-gray-800' : ''}`;
+  const inner = (
+    <>
       <div className="absolute right-0 top-0 w-20 h-20 bg-white/10 rounded-full blur-2xl -mr-6 -mt-6" />
+      {active && <span className="absolute top-2 right-2 bg-white/25 text-[9px] font-bold px-1.5 py-0.5 rounded">● Filtrede</span>}
       <div className="flex items-center gap-2 text-white/80 text-[10px] font-bold uppercase tracking-wider">{icon}<span className="leading-tight">{label}</span></div>
       <div className={`font-extrabold mt-2 ${small ? 'text-lg' : 'text-2xl'}`}>{value}</div>
-    </div>
+    </>
   );
+  return onClick ? <button type="button" onClick={onClick} className={cls}>{inner}</button> : <div className={cls}>{inner}</div>;
 }
 
 /* ============================ ÜRÜN MODALI ============================ */
