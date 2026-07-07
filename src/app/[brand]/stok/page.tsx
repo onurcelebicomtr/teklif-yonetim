@@ -6,12 +6,12 @@ import { useAppStore } from '@/lib/store';
 import {
   StokProduct, StokLocation, StokPack, LOCATION_LABELS, PACK_LABELS,
   storeTotal, warehouseTotal, grandTotal, numberFmt,
-  CURRENCIES, CURRENCY_SYMBOLS, SALE_MARKUP, moneyFmt, costToTRY, netFromList,
+  CURRENCIES, CURRENCY_SYMBOLS, SALE_MARKUP_PRESETS, moneyFmt, costToTRY, netFromList, norm,
 } from '@/lib/stok-types';
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
   ArrowRightLeft, ArrowDownToLine, ArrowUpFromLine, Loader2, ShieldCheck, Boxes,
-  Tag, Layers, AlertTriangle, Printer, PackageSearch,
+  Tag, Layers, AlertTriangle, Printer, PackageSearch, Coins, TrendingUp,
 } from 'lucide-react';
 
 // Teklif kataloğundan hafif ürün kaydı (otomatik doldurma için)
@@ -130,31 +130,37 @@ export default function StokPage() {
   }, [categories, products]);
 
   const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim();
+    const words = norm(search).split(' ').filter(Boolean); // çok kelimeli, Türkçe-duyarsız arama
     return products.filter((p) => {
       if (locFilter === 'store' && storeTotal(p) === 0) return false;
       if (locFilter === 'warehouse' && warehouseTotal(p) === 0) return false;
-      if (fBrand && p.brand !== fBrand) return false;
-      if (fCat && p.category !== fCat) return false;
-      if (fPack === 'boxed' && p.store_boxed + p.warehouse_boxed === 0) return false;
-      if (fPack === 'unboxed' && p.store_unboxed + p.warehouse_unboxed === 0) return false;
-      if (term) {
-        const hay = `${p.code} ${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase();
-        if (!hay.includes(term)) return false;
+      if (fBrand && norm(p.brand) !== norm(fBrand)) return false;
+      if (fCat && norm(p.category) !== norm(fCat)) return false;
+      // Paket filtresi seçili depoya göre sayar (mağaza/depo/hepsi)
+      const boxed = locFilter === 'store' ? p.store_boxed : locFilter === 'warehouse' ? p.warehouse_boxed : p.store_boxed + p.warehouse_boxed;
+      const unboxed = locFilter === 'store' ? p.store_unboxed : locFilter === 'warehouse' ? p.warehouse_unboxed : p.store_unboxed + p.warehouse_unboxed;
+      if (fPack === 'boxed' && boxed === 0) return false;
+      if (fPack === 'unboxed' && unboxed === 0) return false;
+      if (words.length) {
+        const hay = norm(`${p.code} ${p.name} ${p.brand} ${p.category} ${p.color}`);
+        if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;
     });
   }, [products, search, fBrand, fCat, fPack, locFilter]);
 
   const totals = useMemo(() => {
-    let store = 0, warehouse = 0, boxed = 0, unboxed = 0;
+    let store = 0, warehouse = 0, boxed = 0, unboxed = 0, costValue = 0, saleValue = 0;
     products.forEach((p) => {
       store += storeTotal(p); warehouse += warehouseTotal(p);
       boxed += p.store_boxed + p.warehouse_boxed;
       unboxed += p.store_unboxed + p.warehouse_unboxed;
+      const qty = grandTotal(p); // toplam adet — maliyet/satış değeri adetle çarpılır (₺)
+      costValue += costToTRY(p.cost, p.cost_currency, rates) * qty;
+      saleValue += costToTRY(p.sale_price, p.cost_currency, rates) * qty;
     });
-    return { kinds: products.length, store, warehouse, boxed, unboxed, total: store + warehouse };
-  }, [products]);
+    return { kinds: products.length, store, warehouse, boxed, unboxed, total: store + warehouse, costValue, saleValue };
+  }, [products, rates.usd, rates.eur]);
 
   const saveProduct = async (rec: Partial<StokProduct>) => {
     const res = await fetch('/api/stok/products', {
@@ -280,6 +286,13 @@ export default function StokPage() {
           <StatCard icon={<Layers className="w-5 h-5" />} label="Kutulu / Kutusuz" value={`${numberFmt.format(totals.boxed)} / ${numberFmt.format(totals.unboxed)}`} tone="green" small />
         </div>
 
+        {/* Stok değeri — girdi/çıktı oldukça güncellenir (birim × adet, ₺) */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-2 py-3 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+          <ValueItem icon={<Coins className="w-4 h-4" />} label="Toplam Stok Maliyeti" value={moneyFmt.format(totals.costValue)} tone="text-gray-800" bg="bg-gray-100 text-gray-600" />
+          <ValueItem icon={<TrendingUp className="w-4 h-4" />} label="Toplam Satış Değeri" value={moneyFmt.format(totals.saleValue)} tone="text-emerald-600" bg="bg-emerald-50 text-emerald-600" />
+          <ValueItem icon={<Boxes className="w-4 h-4" />} label="Potansiyel Kâr" value={moneyFmt.format(totals.saleValue - totals.costValue)} tone="text-orange-600" bg="bg-orange-50 text-orange-600" />
+        </div>
+
         {/* Filtreler + tablo */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-3 border-b border-gray-100 flex items-center gap-2 flex-wrap">
@@ -302,6 +315,20 @@ export default function StokPage() {
               <option value="unboxed">Kutusuz olanlar</option>
             </select>
           </div>
+
+          {/* Aktif filtre çipleri */}
+          {(locFilter || fBrand || fCat || fPack || search) && (
+            <div className="px-3 pb-3 -mt-1 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-gray-400 font-bold uppercase">Filtreler:</span>
+              {locFilter && <Chip label={locFilter === 'store' ? '🏬 Mağaza' : '📦 Alt Depo'} onClear={() => setLocFilter('')} />}
+              {fBrand && <Chip label={fBrand} onClear={() => setFBrand('')} />}
+              {fCat && <Chip label={fCat} onClear={() => setFCat('')} />}
+              {fPack && <Chip label={fPack === 'boxed' ? 'Kutulu' : 'Kutusuz'} onClear={() => setFPack('')} />}
+              {search && <Chip label={`"${search}"`} onClear={() => setSearch('')} />}
+              <button onClick={() => { setLocFilter(''); setFBrand(''); setFCat(''); setFPack(''); setSearch(''); }}
+                className="text-[10px] font-bold text-rose-600 hover:underline ml-1">Tümünü temizle</button>
+            </div>
+          )}
 
           <div className="overflow-auto">
             <table className="w-full text-left text-xs md:text-sm">
@@ -421,6 +448,27 @@ function ToolBtn({ onClick, icon, label, tone }: { onClick: () => void; icon: Re
   );
 }
 
+function ValueItem({ icon, label, value, tone, bg }: { icon: React.ReactNode; label: string; value: string; tone: string; bg: string }) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5">
+      <div className={`p-2 rounded-lg ${bg}`}>{icon}</div>
+      <div className="min-w-0">
+        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate">{label}</div>
+        <div className={`text-lg font-extrabold font-mono ${tone}`}>{value} ₺</div>
+      </div>
+    </div>
+  );
+}
+
+function Chip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 bg-orange-50 text-orange-700 border border-orange-200 text-[11px] font-medium px-2 py-1 rounded-full">
+      {label}
+      <button onClick={onClear} className="hover:text-orange-900"><X className="w-3 h-3" /></button>
+    </span>
+  );
+}
+
 function StatCard({ icon, label, value, tone, small, onClick, active }: { icon: React.ReactNode; label: string; value: string; tone: string; small?: boolean; onClick?: () => void; active?: boolean }) {
   const tones: Record<string, string> = {
     navy: 'from-slate-700 to-slate-900', blue: 'from-blue-500 to-blue-700',
@@ -462,13 +510,22 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, rates, rateDate
   const costTRY = costToTRY(netCost, f.cost_currency, rates);      // net maliyet (₺)
   const salePriceTRY = costToTRY(f.sale_price, f.cost_currency, rates); // satış (₺ karşılığı)
 
-  // Satış fiyatı otomatik: net maliyet + %25 — maliyetle AYNI para biriminde, elle düzenlenmediyse
+  // Kâr oranı (%) — düzenlemede kayıtlı satış/maliyetten geri hesaplanır, yoksa varsayılan 25
+  const [markup, setMarkup] = useState<number>(() => {
+    if (edit && !edit.sale_manual && edit.cost > 0 && edit.sale_price > 0) {
+      const m = Math.round((edit.sale_price / edit.cost - 1) * 100);
+      if (m > 0 && m < 1000) return m;
+    }
+    return 25;
+  });
+
+  // Satış fiyatı otomatik: net maliyet + kâr oranı — maliyetle AYNI para biriminde, elle düzenlenmediyse
   useEffect(() => {
     if (!f.sale_manual) {
-      setF((s) => ({ ...s, sale_price: Math.round(netCost * SALE_MARKUP * 100) / 100 }));
+      setF((s) => ({ ...s, sale_price: Math.round(netCost * (1 + markup / 100) * 100) / 100 }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f.cost_list, f.cost_discount, f.sale_manual]);
+  }, [f.cost_list, f.cost_discount, f.sale_manual, markup]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -559,25 +616,46 @@ function ProductModal({ edit, brandOptions, catOptions, catalog, rates, rateDate
               </div>
             </div>
 
-            {/* SATIŞ fiyatı — maliyetle aynı para biriminde */}
+            {/* SATIŞ fiyatı — kâr oranı seçilebilir, maliyetle aynı para biriminde */}
             <div>
-              <label className="text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
-                <span>Satış Fiyatı ({CURRENCY_SYMBOLS[f.cost_currency]} {f.cost_currency})</span>
-                {f.sale_manual
-                  ? <button type="button" onClick={() => set('sale_manual', false)} className="text-[9px] font-bold text-orange-600 hover:underline normal-case">↺ Otomatiğe dön</button>
-                  : <span className="text-[9px] font-bold text-emerald-600 normal-case bg-emerald-50 px-1.5 py-0.5 rounded">Otomatik +%25</span>}
+              <label className="text-gray-500 text-[10px] font-bold mb-1.5 uppercase tracking-wider block">
+                Satış Fiyatı ({CURRENCY_SYMBOLS[f.cost_currency]} {f.cost_currency})
               </label>
+              {/* Kâr oranı butonları + manuel */}
+              <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                <span className="text-[10px] text-gray-400 font-bold mr-0.5">Kâr:</span>
+                {SALE_MARKUP_PRESETS.map((m) => {
+                  const on = !f.sale_manual && markup === m;
+                  return (
+                    <button type="button" key={m}
+                      onClick={() => { setMarkup(m); set('sale_manual', false); }}
+                      className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-colors ${on ? 'text-white border-transparent' : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-50'}`}
+                      style={on ? { background: NAVY } : {}}>%{m}</button>
+                  );
+                })}
+                <div className="relative w-14 ml-0.5">
+                  <input type="number" min="0" value={markup}
+                    onChange={(e) => { setMarkup(Math.max(0, Number(e.target.value) || 0)); set('sale_manual', false); }}
+                    className="in py-1 pl-2 pr-5 text-[11px] font-mono" />
+                  <span className="absolute right-2 top-1.5 text-gray-400 text-[10px]">%</span>
+                </div>
+              </div>
               <div className="relative">
                 <input type="number" min="0" step="0.01" value={f.sale_price}
                   onChange={(e) => setF((s) => ({ ...s, sale_price: Math.max(0, Number(e.target.value) || 0), sale_manual: true }))}
                   className="in font-mono font-bold text-lg text-gray-800 pr-7" placeholder="0" />
                 <span className="absolute right-2.5 top-3 text-gray-400 text-sm">{CURRENCY_SYMBOLS[f.cost_currency]}</span>
               </div>
-              <div className="mt-2 text-[10px] text-gray-400">
-                {f.cost_currency !== 'TRY' && (
-                  <span className="text-gray-500 block">≈ <b className="font-mono text-gray-700">{moneyFmt.format(salePriceTRY)} ₺</b></span>
+              <div className="mt-2 text-[10px] text-gray-400 flex items-start justify-between gap-2">
+                <span>
+                  {f.cost_currency !== 'TRY' && (
+                    <span className="text-gray-500 block">≈ <b className="font-mono text-gray-700">{moneyFmt.format(salePriceTRY)} ₺</b></span>
+                  )}
+                  {f.sale_manual ? 'Elle girildi.' : `Net maliyet + %${markup} otomatik.`}
+                </span>
+                {f.sale_manual && (
+                  <button type="button" onClick={() => set('sale_manual', false)} className="text-[10px] font-bold text-orange-600 hover:underline shrink-0">↺ Otomatiğe dön</button>
                 )}
-                {f.sale_manual ? 'Elle girildi.' : 'Net maliyet + %25 otomatik.'}
               </div>
             </div>
           </div>

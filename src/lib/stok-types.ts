@@ -57,3 +57,14 @@ export const warehouseTotal = (p: StokProduct) => p.warehouse_boxed + p.warehous
 export const grandTotal = (p: StokProduct) => storeTotal(p) + warehouseTotal(p);
 
 export const numberFmt = new Intl.NumberFormat('tr-TR');
+
+// Türkçe-duyarsız normalize: İ/ı/ş/ğ/ç/ö/ü ve aksanları sadeleştirir, boşlukları toplar
+export const norm = (s: string) =>
+  (s || '')
+    .toLocaleLowerCase('tr')
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ').trim();
+
+export const SALE_MARKUP_PRESETS = [25, 30, 35];
