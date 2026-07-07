@@ -11,7 +11,7 @@ import {
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
   ArrowRightLeft, ArrowDownToLine, ArrowUpFromLine, Loader2, ShieldCheck, Boxes,
-  Tag, Layers, AlertTriangle, Printer, PackageSearch, Coins,
+  Tag, Layers, AlertTriangle, Printer, PackageSearch,
 } from 'lucide-react';
 
 // Teklif kataloğundan hafif ürün kaydı (otomatik doldurma için)
@@ -286,13 +286,12 @@ export default function StokPage() {
           <StatCard icon={<Layers className="w-5 h-5" />} label="Kutulu / Kutusuz" value={`${numberFmt.format(totals.boxed)} / ${numberFmt.format(totals.unboxed)}`} tone="green" small />
         </div>
 
-        {/* Toplam stok maliyeti — girdi/çıktı oldukça güncellenir (birim × adet, ₺) */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gray-100 text-gray-600"><Coins className="w-5 h-5" /></div>
-          <div>
-            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Toplam Stok Maliyeti</div>
-            <div className="text-2xl font-extrabold font-mono text-gray-800">{moneyFmt.format(totals.costValue)} ₺</div>
-          </div>
+        {/* Toplam stok maliyeti — sağda, ürün satırındaki küçük fiyat formatında (girdi/çıktı oldukça güncellenir) */}
+        <div className="flex justify-end -mt-2">
+          <span className="inline-flex items-baseline gap-1.5 text-[11px] font-medium text-gray-500 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
+            Toplam Stok Maliyeti:
+            <b className="font-mono text-sm text-gray-800">{moneyFmt.format(totals.costValue)} ₺</b>
+          </span>
         </div>
 
         {/* Filtreler + tablo */}
