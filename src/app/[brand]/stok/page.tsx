@@ -347,19 +347,19 @@ export default function StokPage() {
                 <tr>
                   <th className="p-3">Ürün</th>
                   <th className="p-3 hidden md:table-cell">Marka / Kategori</th>
-                  <th className="p-3 text-center" colSpan={2}>🏬 Mağaza</th>
-                  <th className="p-3 text-center" colSpan={2}>📦 Alt Depo</th>
-                  <th className="p-3 text-right">Toplam</th>
+                  <th className="p-3 text-center bg-blue-50 text-blue-700 border-l-2 border-blue-200" colSpan={2}>🏬 Mağaza</th>
+                  <th className="p-3 text-center bg-purple-50 text-purple-700 border-l-2 border-purple-200" colSpan={2}>📦 Alt Depo</th>
+                  <th className="p-3 text-right border-l-2 border-gray-200">Toplam</th>
                   <th className="p-3 text-center w-20">İşlem</th>
                 </tr>
-                <tr className="text-[9px] text-gray-400">
+                <tr className="text-[9px]">
                   <th className="px-3 pb-2"></th>
                   <th className="px-3 pb-2 hidden md:table-cell"></th>
-                  <th className="px-3 pb-2 text-center font-semibold">Kutulu</th>
-                  <th className="px-3 pb-2 text-center font-semibold">Kutusuz</th>
-                  <th className="px-3 pb-2 text-center font-semibold">Kutulu</th>
-                  <th className="px-3 pb-2 text-center font-semibold">Kutusuz</th>
-                  <th className="px-3 pb-2"></th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-blue-50/60 text-blue-600 border-l-2 border-blue-200">Kutulu</th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-blue-50/60 text-blue-600">Kutusuz</th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-purple-50/60 text-purple-600 border-l-2 border-purple-200">Kutulu</th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-purple-50/60 text-purple-600">Kutusuz</th>
+                  <th className="px-3 pb-2 border-l-2 border-gray-200"></th>
                   <th className="px-3 pb-2"></th>
                 </tr>
               </thead>
@@ -400,11 +400,11 @@ export default function StokPage() {
                         <div className="text-gray-700 font-medium">{p.brand || '-'}</div>
                         <div className="text-[10px] text-gray-400">{p.category || ''}</div>
                       </td>
-                      <Cell v={p.store_boxed} />
-                      <Cell v={p.store_unboxed} />
-                      <Cell v={p.warehouse_boxed} />
-                      <Cell v={p.warehouse_unboxed} />
-                      <td className={`p-3 text-right font-mono font-bold ${low ? 'text-amber-600' : 'text-gray-800'}`}>{numberFmt.format(total)}</td>
+                      <Cell v={p.store_boxed} tone="store" first />
+                      <Cell v={p.store_unboxed} tone="store" />
+                      <Cell v={p.warehouse_boxed} tone="warehouse" first />
+                      <Cell v={p.warehouse_unboxed} tone="warehouse" />
+                      <td className={`p-3 text-right font-mono font-bold border-l-2 border-gray-200 ${low ? 'text-amber-600' : 'text-gray-800'}`}>{numberFmt.format(total)}</td>
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => setMoveModal({ open: true, product: p })} className="text-white p-1.5 rounded" style={{ background: NAVY }} title="Stok Hareketi"><ArrowRightLeft className="w-3.5 h-3.5" /></button>
@@ -442,8 +442,10 @@ export default function StokPage() {
   );
 }
 
-function Cell({ v }: { v: number }) {
-  return <td className={`p-3 text-center font-mono ${v > 0 ? 'text-gray-800 font-semibold' : 'text-gray-300'}`}>{v > 0 ? numberFmt.format(v) : '·'}</td>;
+function Cell({ v, tone, first }: { v: number; tone: 'store' | 'warehouse'; first?: boolean }) {
+  const bg = tone === 'store' ? 'bg-blue-50/50' : 'bg-purple-50/50';
+  const border = first ? (tone === 'store' ? 'border-l-2 border-blue-200' : 'border-l-2 border-purple-200') : '';
+  return <td className={`p-3 text-center font-mono ${bg} ${border} ${v > 0 ? 'text-gray-800 font-semibold' : 'text-gray-300'}`}>{v > 0 ? numberFmt.format(v) : '·'}</td>;
 }
 
 function ToolBtn({ onClick, icon, label, tone }: { onClick: () => void; icon: React.ReactNode; label: string; tone?: 'blue' | 'purple' }) {
