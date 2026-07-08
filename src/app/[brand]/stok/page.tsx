@@ -109,6 +109,7 @@ export default function StokPage() {
   const [fBrand, setFBrand] = useState('');
   const [fCat, setFCat] = useState('');
   const [fPack, setFPack] = useState<'' | StokPack>('');
+  const [fPrice, setFPrice] = useState<'' | 'priced' | 'unpriced'>(''); // fiyat girilmiş / girilmemiş
   const [locFilter, setLocFilter] = useState<'' | StokLocation>(''); // kart tıklamasıyla mağaza/depo filtresi
 
   // Modallar
@@ -141,13 +142,16 @@ export default function StokPage() {
       const unboxed = locFilter === 'store' ? p.store_unboxed : locFilter === 'warehouse' ? p.warehouse_unboxed : p.store_unboxed + p.warehouse_unboxed;
       if (fPack === 'boxed' && boxed === 0) return false;
       if (fPack === 'unboxed' && unboxed === 0) return false;
+      const hasPrice = p.cost > 0 || p.sale_price > 0;
+      if (fPrice === 'priced' && !hasPrice) return false;
+      if (fPrice === 'unpriced' && hasPrice) return false;
       if (words.length) {
         const hay = norm(`${p.code} ${p.name} ${p.brand} ${p.category} ${p.color}`);
         if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;
     });
-  }, [products, search, fBrand, fCat, fPack, locFilter]);
+  }, [products, search, fBrand, fCat, fPack, fPrice, locFilter]);
 
   const totals = useMemo(() => {
     let store = 0, warehouse = 0, boxed = 0, unboxed = 0, costValue = 0, saleValue = 0;
@@ -315,18 +319,24 @@ export default function StokPage() {
               <option value="boxed">Kutulu olanlar</option>
               <option value="unboxed">Kutusuz olanlar</option>
             </select>
+            <select value={fPrice} onChange={(e) => setFPrice(e.target.value as any)} className="text-xs border border-gray-200 rounded-lg py-2 px-3 font-medium text-gray-700 outline-none focus:border-orange-500">
+              <option value="">Tüm Fiyatlar</option>
+              <option value="priced">Fiyatı girilenler</option>
+              <option value="unpriced">Fiyatı olmayanlar</option>
+            </select>
           </div>
 
           {/* Aktif filtre çipleri */}
-          {(locFilter || fBrand || fCat || fPack || search) && (
+          {(locFilter || fBrand || fCat || fPack || fPrice || search) && (
             <div className="px-3 pb-3 -mt-1 flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] text-gray-400 font-bold uppercase">Filtreler:</span>
               {locFilter && <Chip label={locFilter === 'store' ? '🏬 Mağaza' : '📦 Alt Depo'} onClear={() => setLocFilter('')} />}
               {fBrand && <Chip label={fBrand} onClear={() => setFBrand('')} />}
               {fCat && <Chip label={fCat} onClear={() => setFCat('')} />}
               {fPack && <Chip label={fPack === 'boxed' ? 'Kutulu' : 'Kutusuz'} onClear={() => setFPack('')} />}
+              {fPrice && <Chip label={fPrice === 'priced' ? 'Fiyatı girilenler' : 'Fiyatı olmayanlar'} onClear={() => setFPrice('')} />}
               {search && <Chip label={`"${search}"`} onClear={() => setSearch('')} />}
-              <button onClick={() => { setLocFilter(''); setFBrand(''); setFCat(''); setFPack(''); setSearch(''); }}
+              <button onClick={() => { setLocFilter(''); setFBrand(''); setFCat(''); setFPack(''); setFPrice(''); setSearch(''); }}
                 className="text-[10px] font-bold text-rose-600 hover:underline ml-1">Tümünü temizle</button>
             </div>
           )}
