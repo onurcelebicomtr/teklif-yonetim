@@ -154,17 +154,28 @@ export default function StokPage() {
   }, [products, search, fBrand, fCat, fPack, fPrice, locFilter]);
 
   const totals = useMemo(() => {
-    let store = 0, warehouse = 0, boxed = 0, unboxed = 0, costValue = 0, saleValue = 0;
+    let store = 0, warehouse = 0, boxed = 0, unboxed = 0;
     products.forEach((p) => {
       store += storeTotal(p); warehouse += warehouseTotal(p);
       boxed += p.store_boxed + p.warehouse_boxed;
       unboxed += p.store_unboxed + p.warehouse_unboxed;
-      const qty = grandTotal(p); // toplam adet — maliyet/satış değeri adetle çarpılır (₺)
-      costValue += costToTRY(p.cost, p.cost_currency, rates) * qty;
-      saleValue += costToTRY(p.sale_price, p.cost_currency, rates) * qty;
     });
-    return { kinds: products.length, store, warehouse, boxed, unboxed, total: store + warehouse, costValue, saleValue };
-  }, [products, rates.usd, rates.eur]);
+    return { kinds: products.length, store, warehouse, boxed, unboxed, total: store + warehouse };
+  }, [products]);
+
+  // Stok maliyeti — aktif filtreye göre (mağaza/depo/filtreli), TL bazında
+  const filteredCostValue = useMemo(() =>
+    filtered.reduce((sum, p) => {
+      const qty = locFilter === 'store' ? storeTotal(p) : locFilter === 'warehouse' ? warehouseTotal(p) : grandTotal(p);
+      return sum + costToTRY(p.cost, p.cost_currency, rates) * qty;
+    }, 0),
+    [filtered, locFilter, rates.usd, rates.eur]
+  );
+
+  const costLabel = locFilter === 'store' ? 'Mağaza Stok Maliyeti'
+    : locFilter === 'warehouse' ? 'Alt Depo Stok Maliyeti'
+    : (fBrand || fCat || fPack || fPrice || search) ? 'Filtreli Stok Maliyeti'
+    : 'Toplam Stok Maliyeti';
 
   const saveProduct = async (rec: Partial<StokProduct>) => {
     const res = await fetch('/api/stok/products', {
@@ -293,8 +304,8 @@ export default function StokPage() {
         {/* Toplam stok maliyeti — sağda, ürün satırındaki küçük fiyat formatında (girdi/çıktı oldukça güncellenir) */}
         <div className="flex justify-end -mt-2">
           <span className="inline-flex items-baseline gap-1.5 text-[11px] font-medium text-gray-500 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
-            Toplam Stok Maliyeti:
-            <b className="font-mono text-sm text-gray-800">{moneyFmt.format(totals.costValue)} ₺</b>
+            {costLabel}:
+            <b className="font-mono text-sm text-gray-800">{moneyFmt.format(filteredCostValue)} ₺</b>
           </span>
         </div>
 
@@ -347,19 +358,19 @@ export default function StokPage() {
                 <tr>
                   <th className="p-3">Ürün</th>
                   <th className="p-3 hidden md:table-cell">Marka / Kategori</th>
-                  <th className="p-3 text-center bg-blue-50 text-blue-700 border-l-2 border-blue-200" colSpan={2}>🏬 Mağaza</th>
-                  <th className="p-3 text-center bg-purple-50 text-purple-700 border-l-2 border-purple-200" colSpan={2}>📦 Alt Depo</th>
-                  <th className="p-3 text-right border-l-2 border-gray-200">Toplam</th>
+                  <th className="p-3 text-center bg-blue-50/50 text-blue-600 border-l border-blue-100" colSpan={2}>🏬 Mağaza</th>
+                  <th className="p-3 text-center bg-purple-50/50 text-purple-600 border-l border-purple-100" colSpan={2}>📦 Alt Depo</th>
+                  <th className="p-3 text-right border-l border-gray-200">Toplam</th>
                   <th className="p-3 text-center w-20">İşlem</th>
                 </tr>
                 <tr className="text-[9px]">
                   <th className="px-3 pb-2"></th>
                   <th className="px-3 pb-2 hidden md:table-cell"></th>
-                  <th className="px-3 pb-2 text-center font-semibold bg-blue-50/60 text-blue-600 border-l-2 border-blue-200">Kutulu</th>
-                  <th className="px-3 pb-2 text-center font-semibold bg-blue-50/60 text-blue-600">Kutusuz</th>
-                  <th className="px-3 pb-2 text-center font-semibold bg-purple-50/60 text-purple-600 border-l-2 border-purple-200">Kutulu</th>
-                  <th className="px-3 pb-2 text-center font-semibold bg-purple-50/60 text-purple-600">Kutusuz</th>
-                  <th className="px-3 pb-2 border-l-2 border-gray-200"></th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-blue-50/30 text-blue-500 border-l border-blue-100">Kutulu</th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-blue-50/30 text-blue-500">Kutusuz</th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-purple-50/30 text-purple-500 border-l border-purple-100">Kutulu</th>
+                  <th className="px-3 pb-2 text-center font-semibold bg-purple-50/30 text-purple-500">Kutusuz</th>
+                  <th className="px-3 pb-2 border-l border-gray-200"></th>
                   <th className="px-3 pb-2"></th>
                 </tr>
               </thead>
@@ -383,13 +394,16 @@ export default function StokPage() {
                               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px]">
                                 {p.sale_price > 0 && (
                                   <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                    Satış: {moneyFmt.format(p.sale_price)} {CURRENCY_SYMBOLS[p.cost_currency] || '₺'}
+                                    Satış: {moneyFmt.format(costToTRY(p.sale_price, p.cost_currency, rates))} ₺
                                   </span>
                                 )}
                                 {p.cost > 0 && (
                                   <span className="text-gray-400">
-                                    Maliyet: {moneyFmt.format(p.cost)} {CURRENCY_SYMBOLS[p.cost_currency] || '₺'}
+                                    Maliyet: {moneyFmt.format(costToTRY(p.cost, p.cost_currency, rates))} ₺
                                   </span>
+                                )}
+                                {p.cost_currency !== 'TRY' && (
+                                  <span className="text-gray-300 text-[9px]">({CURRENCY_SYMBOLS[p.cost_currency]} bazlı)</span>
                                 )}
                               </div>
                             )}
@@ -404,7 +418,7 @@ export default function StokPage() {
                       <Cell v={p.store_unboxed} tone="store" />
                       <Cell v={p.warehouse_boxed} tone="warehouse" first />
                       <Cell v={p.warehouse_unboxed} tone="warehouse" />
-                      <td className={`p-3 text-right font-mono font-bold border-l-2 border-gray-200 ${low ? 'text-amber-600' : 'text-gray-800'}`}>{numberFmt.format(total)}</td>
+                      <td className={`p-3 text-right font-mono font-bold border-l border-gray-200 ${low ? 'text-amber-600' : 'text-gray-800'}`}>{numberFmt.format(total)}</td>
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => setMoveModal({ open: true, product: p })} className="text-white p-1.5 rounded" style={{ background: NAVY }} title="Stok Hareketi"><ArrowRightLeft className="w-3.5 h-3.5" /></button>
@@ -443,8 +457,8 @@ export default function StokPage() {
 }
 
 function Cell({ v, tone, first }: { v: number; tone: 'store' | 'warehouse'; first?: boolean }) {
-  const bg = tone === 'store' ? 'bg-blue-50/50' : 'bg-purple-50/50';
-  const border = first ? (tone === 'store' ? 'border-l-2 border-blue-200' : 'border-l-2 border-purple-200') : '';
+  const bg = tone === 'store' ? 'bg-blue-50/30' : 'bg-purple-50/30';
+  const border = first ? (tone === 'store' ? 'border-l border-blue-100' : 'border-l border-purple-100') : '';
   return <td className={`p-3 text-center font-mono ${bg} ${border} ${v > 0 ? 'text-gray-800 font-semibold' : 'text-gray-300'}`}>{v > 0 ? numberFmt.format(v) : '·'}</td>;
 }
 
