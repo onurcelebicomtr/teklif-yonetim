@@ -704,10 +704,10 @@ function CatalogPicker({ catalog, onPick }: {
   const [open, setOpen] = useState(false);
 
   const results = useMemo(() => {
-    const term = q.toLowerCase().trim();
+    const term = norm(q);
     if (term.length < 2) return [];
     return catalog
-      .filter((c) => `${c.name} ${c.sku} ${c.manufacturer}`.toLowerCase().includes(term))
+      .filter((c) => norm(`${c.name} ${c.sku} ${c.manufacturer}`).includes(term))
       .slice(0, 8);
   }, [q, catalog]);
 
@@ -727,7 +727,7 @@ function CatalogPicker({ catalog, onPick }: {
           style={{ paddingLeft: '2.25rem' }}
         />
       </div>
-      {open && q.trim().length >= 2 && (
+      {open && norm(q).length >= 2 && (
         <div className="absolute z-20 left-3 right-3 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto">
           {results.length === 0 ? (
             <div className="px-3 py-3 text-xs text-gray-400">Eşleşen ürün yok.</div>
@@ -760,9 +760,9 @@ function ComboAdd({ value, onChange, options, onCreate, placeholder }: {
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const term = (value || '').toLowerCase().trim();
-  const filtered = useMemo(() => options.filter((o) => o.toLowerCase().includes(term)).slice(0, 30), [options, term]);
-  const exact = options.some((o) => o.toLowerCase() === term);
+  const term = norm(value);
+  const filtered = useMemo(() => options.filter((o) => norm(o).includes(term)).slice(0, 30), [options, term]);
+  const exact = options.some((o) => norm(o) === term);
   const canCreate = term.length > 0 && !exact;
 
   return (
