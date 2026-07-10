@@ -7,7 +7,14 @@ export interface CariAccount {
   address?: string | null;
 }
 
-export type CariType = 'borc' | 'satis' | 'alacak';
+// borc: Alış Fat. (+Borç) | satis: Satış Fat. (+Alacak)
+// alacak: Ödeme Yap (biz ödedik, net düşer) | odeme_al: Ödeme Al (tahsilat aldık, net artar)
+export type CariType = 'borc' | 'satis' | 'alacak' | 'odeme_al';
+
+// Borç yönü (net +): alış faturası ve alınan ödeme
+export const isDebtType = (t: string) => t === 'borc' || t === 'odeme_al';
+// Ödeme yöntemi girilen tipler (ödeme yap / ödeme al)
+export const isPaymentType = (t: string) => t === 'alacak' || t === 'odeme_al';
 
 export interface CariTransaction {
   id: number;

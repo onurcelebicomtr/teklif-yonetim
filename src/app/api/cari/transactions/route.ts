@@ -3,7 +3,7 @@ import { cariDb, isCariConfigured, getAuthUser, unauthorized, notConfigured } fr
 
 export const dynamic = 'force-dynamic';
 
-const VALID_TYPES = ['borc', 'satis', 'alacak'];
+const VALID_TYPES = ['borc', 'satis', 'alacak', 'odeme_al'];
 
 // Hareket ekle / güncelle
 export async function POST(req: NextRequest) {

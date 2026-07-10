@@ -12,6 +12,8 @@ import {
   dateFmt,
   PAYMENT_METHODS,
   PAYMENT_METHOD_SHORT,
+  isDebtType,
+  isPaymentType,
 } from '@/lib/cari-types';
 import {
   Lock, LogOut, Plus, Pencil, Trash2, Search, Settings, Bolt, X, FileDown,
@@ -408,7 +410,7 @@ function Dashboard({ accounts, transactions, onOpen, onAdd }: {
       let debt = 0, credit = 0;
       transactions.forEach((t) => {
         if (t.account_id !== acc.id) return;
-        if (t.type === 'borc') debt += t.amount; else credit += t.amount;
+        if (isDebtType(t.type)) debt += t.amount; else credit += t.amount;
       });
       return { ...acc, debt, credit, balance: debt - credit };
     });
@@ -578,7 +580,7 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
   // Genel bakiye (filtreden bağımsız)
   const overall = useMemo(() => {
     let debt = 0, credit = 0;
-    custTrans.forEach((t) => { if (t.type === 'borc') debt += t.amount; else credit += t.amount; });
+    custTrans.forEach((t) => { if (isDebtType(t.type)) debt += t.amount; else credit += t.amount; });
     return { debt, credit, net: debt - credit };
   }, [custTrans]);
 
@@ -587,7 +589,7 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
     let debt = 0, credit = 0;
     custTrans.forEach((t) => {
       if (!checkDateFilter(t.date, dateFilter)) return;
-      if (t.type === 'borc') debt += t.amount; else credit += t.amount;
+      if (isDebtType(t.type)) debt += t.amount; else credit += t.amount;
     });
     return { debt, credit };
   }, [custTrans, dateFilter]);
@@ -599,7 +601,7 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
     if (start) {
       custTrans.forEach((t) => {
         const td = new Date(t.date); td.setHours(0, 0, 0, 0);
-        if (td < start) { if (t.type === 'borc') devirBalance += t.amount; else devirBalance -= t.amount; }
+        if (td < start) { if (isDebtType(t.type)) devirBalance += t.amount; else devirBalance -= t.amount; }
       });
     }
     let running = start ? devirBalance : 0;
@@ -607,8 +609,8 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
     const out: Array<{ t: CariTransaction; balance: number }> = [];
     custTrans.forEach((t) => {
       const matchesDate = checkDateFilter(t.date, dateFilter);
-      if (!start) { if (t.type === 'borc') running += t.amount; else running -= t.amount; }
-      else if (matchesDate) { if (t.type === 'borc') running += t.amount; else running -= t.amount; }
+      if (!start) { if (isDebtType(t.type)) running += t.amount; else running -= t.amount; }
+      else if (matchesDate) { if (isDebtType(t.type)) running += t.amount; else running -= t.amount; }
       const matchesSearch = t.description.toLowerCase().includes(term) || t.date.includes(term);
       if (matchesSearch && matchesDate) out.push({ t, balance: running });
     });
@@ -622,8 +624,8 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
     custTrans.forEach((t) => {
       const d = new Date(t.date).toLocaleDateString('tr-TR');
       const desc = (t.description || '').replace(/;/g, ' ');
-      const borc = t.type === 'borc' ? String(t.amount).replace('.', ',') : '0';
-      const odenen = t.type !== 'borc' ? String(t.amount).replace('.', ',') : '0';
+      const borc = isDebtType(t.type) ? String(t.amount).replace('.', ',') : '0';
+      const odenen = !isDebtType(t.type) ? String(t.amount).replace('.', ',') : '0';
       csv += `${d};${desc};${borc};${odenen}\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -723,13 +725,13 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
                     <tr><td colSpan={6} className="p-12 text-center text-gray-400">Bu carinin henüz hareketi yok. Soldaki formdan işlem ekleyin.</td></tr>
                   )}
                   {rows.map(({ t, balance }) => {
-                    const isDebt = t.type === 'borc';
+                    const isDebt = isDebtType(t.type);
                     return (
                       <tr key={t.id} className="hover:bg-gray-50 group">
                         <td className="p-3 font-semibold whitespace-nowrap text-gray-500">{dateFmt(t.date)}</td>
                         <td className="p-3 text-gray-800 font-medium">
                           {t.description}
-                          {t.type === 'alacak' && t.payment_method && (
+                          {isPaymentType(t.type) && t.payment_method && (
                             <span className="inline-flex items-center gap-1 ml-2 text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border uppercase font-semibold">
                               <Wallet className="w-2.5 h-2.5" /> {PAYMENT_METHOD_SHORT[t.payment_method] || t.payment_method}{t.installments ? ` (${t.installments} Tak.)` : ''}
                             </span>
@@ -808,8 +810,8 @@ function TransactionForm({ accountId, editing, onCancel, onSubmit }: {
       id: editing?.id,
       account_id: accountId,
       date, type, description: desc, amount: amt,
-      payment_method: type === 'alacak' ? method : null,
-      installments: type === 'alacak' && method === 'kart-taksit' ? installments : null,
+      payment_method: isPaymentType(type) ? method : null,
+      installments: isPaymentType(type) && method === 'kart-taksit' ? installments : null,
     });
     if (!editing) { setDesc(''); setAmount(''); setType('borc'); }
   };
@@ -817,7 +819,8 @@ function TransactionForm({ accountId, editing, onCancel, onSubmit }: {
   const typeBtns: Array<{ v: CariType; label: string; sub: string; active: string }> = [
     { v: 'borc', label: 'ALIŞ FAT.', sub: '(+Borç)', active: 'bg-blue-600 border-blue-600 text-white' },
     { v: 'satis', label: 'SATIŞ FAT.', sub: '(+Alacak)', active: 'bg-amber-500 border-amber-500 text-white' },
-    { v: 'alacak', label: 'TAHSİLAT', sub: '(-Düş)', active: 'bg-emerald-500 border-emerald-500 text-white' },
+    { v: 'alacak', label: 'ÖDEME YAP', sub: '(-Düş)', active: 'bg-rose-500 border-rose-500 text-white' },
+    { v: 'odeme_al', label: 'ÖDEME AL', sub: '(+Tahsilat)', active: 'bg-emerald-500 border-emerald-500 text-white' },
   ];
 
   return (
@@ -836,7 +839,7 @@ function TransactionForm({ accountId, editing, onCancel, onSubmit }: {
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase tracking-wider">İşlem Tipi</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {typeBtns.map((b) => (
               <button type="button" key={b.v} onClick={() => setType(b.v)}
                 className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[10px] font-bold leading-tight transition-all ${type === b.v ? b.active : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
@@ -845,7 +848,7 @@ function TransactionForm({ accountId, editing, onCancel, onSubmit }: {
             ))}
           </div>
         </div>
-        {type === 'alacak' && (
+        {isPaymentType(type) && (
           <div className="space-y-3 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
             <div>
               <label className="block text-[10px] font-bold text-emerald-800 mb-1.5 uppercase tracking-wider">Ödeme Yöntemi</label>
@@ -1058,9 +1061,9 @@ function generateExtractPrint(
   const todayStr = new Date().toLocaleDateString('tr-TR');
   let running = 0;
   const rowsHtml = custTrans.map((t) => {
-    const isDebt = t.type === 'borc';
+    const isDebt = isDebtType(t.type);
     if (isDebt) running += t.amount; else running -= t.amount;
-    const method = t.type === 'alacak' && t.payment_method
+    const method = isPaymentType(t.type) && t.payment_method
       ? ` <span style="font-size:9px;color:#666;">(${PAYMENT_METHOD_SHORT[t.payment_method] || t.payment_method}${t.installments ? ` ${t.installments} Tak.` : ''})</span>` : '';
     return `<tr>
       <td class="mono" style="white-space:nowrap;">${dateFmt(t.date)}</td>

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         account_id: Number(t.customerId),
         date,
         description: String(t.desc || ''),
-        type: ['borc', 'satis', 'alacak'].includes(t.type) ? t.type : 'borc',
+        type: ['borc', 'satis', 'alacak', 'odeme_al'].includes(t.type) ? t.type : 'borc',
         amount: Number(t.amount) || 0,
         payment_method: t.paymentMethod ? String(t.paymentMethod) : null,
         installments: t.installments ? String(t.installments) : null,
