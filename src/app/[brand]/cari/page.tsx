@@ -643,8 +643,8 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-        {/* Sol: cari kart + işlem formu */}
-        <div className="space-y-4">
+        {/* Sol: cari kart + işlem formu — masaüstünde scroll'da yapışık kalır */}
+        <div className="space-y-4 lg:sticky lg:top-[120px] lg:self-start lg:max-h-[calc(100vh-136px)] lg:overflow-y-auto lg:pr-1">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             <div className="flex items-start justify-between">
               <div>
