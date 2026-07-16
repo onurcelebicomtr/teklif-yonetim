@@ -36,3 +36,9 @@
     border-radius: 0 !important;
   }
 }
+
+/* Teklif önizleme — zengin metin (RichEditor) çıktısı */
+.rich-content ul { list-style: disc; padding-left: 20px; margin: 2px 0; }
+.rich-content ol { list-style: decimal; padding-left: 20px; margin: 2px 0; }
+.rich-content b, .rich-content strong { font-weight: 700; }
+.rich-content i, .rich-content em { font-style: italic; }

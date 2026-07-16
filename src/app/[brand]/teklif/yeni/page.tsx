@@ -7,6 +7,7 @@ import { getBrand } from '@/lib/brands';
 import { formatCurrency, getCurrencySymbol, numberToText, generateProposalNo, getTodayDate, getValidityDate, getValidityText } from '@/lib/helpers';
 import type { ProposalItem, Proposal, PackageTemplate, PackageItem } from '@/lib/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import RichEditor, { renderRichHtml } from '@/components/RichEditor';
 import {
   Plus, Trash2, Copy, GripVertical, Eye, EyeOff, Truck, Save, FileDown,
   Printer, ArrowLeft, Search, Users, ChevronDown, RefreshCw, Package, UserCheck, AlertCircle, Boxes, X, Edit2,
@@ -725,14 +726,14 @@ export default function YeniTeklifPage() {
           <div className="grid grid-cols-2 gap-6 mb-8" style={{ pageBreakAfter: 'avoid' }}>
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Müşteri Bilgileri</h3>
-              <div className="text-sm font-bold text-gray-900">{customerName || '-'}</div>
-              {customerPhone && <div className="text-xs text-gray-600">{customerPhone}</div>}
-              {customerCity && <div className="text-xs text-gray-600">{customerCity}</div>}
+              {customerName ? <div className="text-sm font-bold text-gray-900" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerName) }} /> : <div className="text-sm font-bold text-gray-900">-</div>}
+              {customerPhone && <div className="text-xs text-gray-600" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerPhone) }} />}
+              {customerCity && <div className="text-xs text-gray-600" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerCity) }} />}
               {customerAddress && <div className="text-xs text-gray-500 mt-1">{customerAddress}</div>}
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Proje</h3>
-              <div className="text-sm font-bold text-gray-900">{projectName || '-'}</div>
+              {projectName ? <div className="text-sm font-bold text-gray-900" dangerouslySetInnerHTML={{ __html: renderRichHtml(projectName) }} /> : <div className="text-sm font-bold text-gray-900">-</div>}
             </div>
           </div>
 
@@ -776,13 +777,7 @@ export default function YeniTeklifPage() {
                       <td className="py-5 px-3">
                         <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
                         {item.sku && <div className="text-[10px] text-gray-400 mt-0.5">Ürün Kodu: {item.sku}</div>}
-                        {item.description && (() => {
-                          const lines = item.description.split('\n').filter(l => l.trim());
-                          if (lines.length === 0) return null;
-                          if (item.description_format === 'numbered') return <ol style={{ margin: '2px 0 0 0', paddingLeft: '18px', listStyleType: 'decimal' }} className="text-xs text-gray-500 italic">{lines.map((l, i) => <li key={i}>{l.trim()}</li>)}</ol>;
-                          if (item.description_format === 'bullet') return <ul style={{ margin: '2px 0 0 0', paddingLeft: '18px', listStyleType: 'disc' }} className="text-xs text-gray-500 italic">{lines.map((l, i) => <li key={i}>{l.trim()}</li>)}</ul>;
-                          return <div className="text-xs text-gray-500 italic mt-0.5" style={{ whiteSpace: 'pre-line' }}>{item.description}</div>;
-                        })()}
+                        {item.description && <div className="text-xs text-gray-500 mt-0.5 rich-content" dangerouslySetInnerHTML={{ __html: renderRichHtml(item.description) }} />}
                       </td>
                       <td className="py-5 px-3 text-center font-semibold text-sm">{item.quantity}</td>
                       {!isHidden && <td className="py-5 px-3 text-right font-bold text-sm">{formatCurrency(convertCurrency(netUnitPrice), sym)}</td>}
@@ -816,13 +811,7 @@ export default function YeniTeklifPage() {
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-900 text-base">{item.name}</div>
                       {item.sku && <div className="text-xs text-gray-400 mt-0.5">Ürün Kodu: {item.sku}</div>}
-                      {item.description && (() => {
-                        const lines = item.description.split('\n').filter(l => l.trim());
-                        if (lines.length === 0) return null;
-                        if (item.description_format === 'numbered') return <ol style={{ margin: '4px 0 0 0', paddingLeft: '18px', listStyleType: 'decimal' }} className="text-sm text-gray-500 italic">{lines.map((l, i) => <li key={i}>{l.trim()}</li>)}</ol>;
-                        if (item.description_format === 'bullet') return <ul style={{ margin: '4px 0 0 0', paddingLeft: '18px', listStyleType: 'disc' }} className="text-sm text-gray-500 italic">{lines.map((l, i) => <li key={i}>{l.trim()}</li>)}</ul>;
-                        return <div className="text-sm text-gray-500 italic mt-1" style={{ whiteSpace: 'pre-line' }}>{item.description}</div>;
-                      })()}
+                      {item.description && <div className="text-sm text-gray-500 mt-1 rich-content" dangerouslySetInnerHTML={{ __html: renderRichHtml(item.description) }} />}
                       <div className="mt-3 flex items-baseline gap-2">
                         <span className="text-sm text-gray-500">{item.quantity} Adet x {!isHidden ? formatCurrency(convertCurrency(netUnitPrice), sym) : '-'}</span>
                         {!isHidden && <span className="text-lg font-extrabold text-gray-900 ml-auto">{formatCurrency(convertCurrency(netLineTotal), sym)}</span>}
@@ -981,22 +970,22 @@ export default function YeniTeklifPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">Proje Adı</label>
-            <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Proje Adı" />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Müşteri Adı</label>
-            <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Firma / Kişi" />
+            <RichEditor value={customerName} onChange={setCustomerName} placeholder="Firma / Kişi" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">Proje Adı</label>
+            <RichEditor value={projectName} onChange={setProjectName} placeholder="Proje Adı" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Telefon</label>
-            <input type="text" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Telefon" />
+            <RichEditor value={customerPhone} onChange={setCustomerPhone} placeholder="Telefon" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">Şehir</label>
-            <input type="text" value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Şehir" />
+            <label className="block text-xs font-bold text-gray-500 mb-1">Adres</label>
+            <RichEditor value={customerCity} onChange={setCustomerCity} placeholder="Adres" />
           </div>
         </div>
       </div>
@@ -1320,11 +1309,7 @@ export default function YeniTeklifPage() {
                         <input type="text" value={item.sku || ''} onChange={(e) => updateItem(item.id, 'sku', e.target.value)} className="text-[10px] text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-32" placeholder="SKU girin" />
                       </div>
                       <div className="mt-1">
-                        <div className="flex items-center gap-1 mb-1">
-                          <button onClick={() => updateItem(item.id, 'description_format', item.description_format === 'numbered' ? 'none' : 'numbered')} className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition ${item.description_format === 'numbered' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'}`} title="Numaralı liste">1.</button>
-                          <button onClick={() => updateItem(item.id, 'description_format', item.description_format === 'bullet' ? 'none' : 'bullet')} className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition ${item.description_format === 'bullet' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'}`} title="Madde işaretli liste">•</button>
-                        </div>
-                        <textarea value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none resize-none focus:border-blue-400" placeholder="Teknik özellikler (her satır bir madde)" rows={2} />
+                        <RichEditor value={item.description || ''} onChange={(html) => updateItem(item.id, 'description', html)} placeholder="Teknik özellikler (kalın, italik, renk, liste…)" minHeight={48} />
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center">
