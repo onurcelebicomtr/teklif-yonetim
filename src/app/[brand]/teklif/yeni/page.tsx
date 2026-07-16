@@ -727,13 +727,13 @@ export default function YeniTeklifPage() {
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Müşteri Bilgileri</h3>
               {customerName ? <div className="text-sm font-bold text-gray-900" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerName) }} /> : <div className="text-sm font-bold text-gray-900">-</div>}
-              {customerPhone && <div className="text-xs text-gray-600" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerPhone) }} />}
-              {customerCity && <div className="text-xs text-gray-600" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerCity) }} />}
+              {customerPhone && <div className="text-xs text-gray-600">{customerPhone}</div>}
+              {customerCity && <div className="text-xs text-gray-600">{customerCity}</div>}
               {customerAddress && <div className="text-xs text-gray-500 mt-1">{customerAddress}</div>}
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Proje</h3>
-              {projectName ? <div className="text-sm font-bold text-gray-900" dangerouslySetInnerHTML={{ __html: renderRichHtml(projectName) }} /> : <div className="text-sm font-bold text-gray-900">-</div>}
+              <div className="text-sm font-bold text-gray-900">{projectName || '-'}</div>
             </div>
           </div>
 
@@ -977,15 +977,15 @@ export default function YeniTeklifPage() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Proje Adı</label>
-            <RichEditor value={projectName} onChange={setProjectName} placeholder="Proje Adı" />
+            <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Proje Adı" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Telefon</label>
-            <RichEditor value={customerPhone} onChange={setCustomerPhone} placeholder="Telefon" />
+            <input type="text" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Telefon" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Adres</label>
-            <RichEditor value={customerCity} onChange={setCustomerCity} placeholder="Adres" />
+            <input type="text" value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Adres" />
           </div>
         </div>
       </div>
@@ -1309,7 +1309,7 @@ export default function YeniTeklifPage() {
                         <input type="text" value={item.sku || ''} onChange={(e) => updateItem(item.id, 'sku', e.target.value)} className="text-[10px] text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-32" placeholder="SKU girin" />
                       </div>
                       <div className="mt-1">
-                        <RichEditor value={item.description || ''} onChange={(html) => updateItem(item.id, 'description', html)} placeholder="Teknik özellikler (kalın, italik, renk, liste…)" minHeight={48} />
+                        <RichEditor value={item.description || ''} onChange={(html) => updateItem(item.id, 'description', html)} placeholder="Teknik özellikler (yazmak için tıklayın)" minHeight={44} toolbarOnFocus />
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center">
