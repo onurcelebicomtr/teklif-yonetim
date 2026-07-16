@@ -8,6 +8,7 @@ import { formatCurrency, getCurrencySymbol, numberToText, generateProposalNo, ge
 import type { ProposalItem, Proposal, PackageTemplate, PackageItem } from '@/lib/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import RichEditor, { renderRichHtml } from '@/components/RichEditor';
+import AutoTextarea from '@/components/AutoTextarea';
 import {
   Plus, Trash2, Copy, GripVertical, Eye, EyeOff, Truck, Save, FileDown,
   Printer, ArrowLeft, Search, Users, ChevronDown, RefreshCw, Package, UserCheck, AlertCircle, Boxes, X, Edit2,
@@ -728,7 +729,7 @@ export default function YeniTeklifPage() {
               <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Müşteri Bilgileri</h3>
               {customerName ? <div className="text-sm font-bold text-gray-900" dangerouslySetInnerHTML={{ __html: renderRichHtml(customerName) }} /> : <div className="text-sm font-bold text-gray-900">-</div>}
               {customerPhone && <div className="text-xs text-gray-600">{customerPhone}</div>}
-              {customerCity && <div className="text-xs text-gray-600">{customerCity}</div>}
+              {customerCity && <div className="text-xs text-gray-600" style={{ whiteSpace: 'pre-line' }}>{customerCity}</div>}
               {customerAddress && <div className="text-xs text-gray-500 mt-1">{customerAddress}</div>}
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
@@ -973,7 +974,7 @@ export default function YeniTeklifPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Müşteri Adı</label>
-            <RichEditor value={customerName} onChange={setCustomerName} placeholder="Firma / Kişi" />
+            <RichEditor value={customerName} onChange={setCustomerName} placeholder="Firma / Kişi (yazmak için tıklayın)" toolbarOnFocus />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Proje Adı</label>
@@ -985,7 +986,7 @@ export default function YeniTeklifPage() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Adres</label>
-            <input type="text" value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="Adres" />
+            <AutoTextarea value={customerCity} onChange={setCustomerCity} className="w-full p-2 border border-gray-300 rounded-lg text-sm block" placeholder="Adres" />
           </div>
         </div>
       </div>
