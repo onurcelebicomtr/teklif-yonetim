@@ -779,7 +779,7 @@ export default function YeniTeklifPage() {
   if (isPrintMode) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="no-print flex items-center gap-2 mb-4 p-3 bg-white rounded-xl border shadow-sm flex-wrap">
+        <div className="no-print flex items-center gap-2 mb-4 p-3 bg-white rounded-xl border shadow-sm flex-wrap [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center">
           <button onClick={() => setIsPrintMode(false)} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 text-gray-600 hover:bg-gray-100 transition"><ArrowLeft className="w-4 h-4" /> Geri</button>
           <button
             onClick={() => setViewMode(viewMode === 'liste' ? 'katalog' : 'liste')}
@@ -800,7 +800,8 @@ export default function YeniTeklifPage() {
           {!isFormValid && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Hazırlayan alanını doldurun</span>}
         </div>
 
-        <div ref={printRef} className="bg-white p-6 rounded-xl shadow-lg page-container">
+        <div className="overflow-x-auto -mx-1 sm:mx-0">
+        <div ref={printRef} className="bg-white p-4 sm:p-6 rounded-xl shadow-lg page-container min-w-[720px]">
           {/* Header */}
           <div className="mb-6 pb-4 border-b-2" style={{ borderColor: brand.accentColor }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1001,6 +1002,7 @@ export default function YeniTeklifPage() {
             </div>
           )}
         </div>
+        </div>
       </div>
     );
   }
@@ -1023,7 +1025,7 @@ export default function YeniTeklifPage() {
             />
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center">
           <button onClick={() => setIsPrintMode(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-900"><Eye className="w-4 h-4" /> Önizle</button>
           <button onClick={handleDownloadJSON} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600"><FileDown className="w-4 h-4" /> JSON</button>
           <button onClick={handleSave} disabled={!isFormValid || saving} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid && !saving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> {saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
@@ -1132,7 +1134,7 @@ export default function YeniTeklifPage() {
           <label className="text-xs font-bold text-orange-600">Fiyatları Gizle</label>
         </div>
 
-        <div className="ml-auto flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+        <div className="w-full sm:w-auto sm:ml-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-bold text-blue-600 uppercase">TCMB Kur</span>
             <RefreshCw className="w-3 h-3 text-blue-400 cursor-pointer hover:text-blue-600" onClick={async () => {
@@ -1371,7 +1373,7 @@ export default function YeniTeklifPage() {
       {/* Items Table */}
       {items.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs font-bold text-gray-500 uppercase text-left">
                 <th className="py-2 px-2 w-8"></th>
@@ -1506,7 +1508,7 @@ export default function YeniTeklifPage() {
       {items.length > 0 && (
         <div className="flex flex-col lg:flex-row gap-6 justify-end">
           {/* Profit Box */}
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 min-w-[320px] shadow-sm">
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 w-full lg:w-auto lg:min-w-[320px] shadow-sm">
             <h4 className="text-sm font-bold text-orange-800 mb-3 border-b border-orange-200 pb-2">📊 Kâr Analizi</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Satış Toplamı:</span><span className="font-semibold">{formatCurrency(convertCurrency(discountedSubTotal), sym)}</span></div>
