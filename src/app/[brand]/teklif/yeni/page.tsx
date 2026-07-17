@@ -20,7 +20,7 @@ export default function YeniTeklifPage() {
   const router = useRouter();
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
-  const { products, customers, proposals, addProposal, updateProposal, addProduct, updateProduct, removeProduct, setProducts, rates, packages, addPackage, removePackage, setPackages } = useAppStore();
+  const { products, customers, proposals, addProposal, updateProposal, addCustomer, addProduct, updateProduct, removeProduct, setProducts, rates, packages, addPackage, removePackage, setPackages } = useAppStore();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
   const editingProposal = editId ? proposals.find(p => p.id === editId) : null;
@@ -517,6 +517,32 @@ export default function YeniTeklifPage() {
   const isFormValid = preparedBy.trim().length > 0;
 
   const [saving, setSaving] = useState(false);
+  const [custDismissed, setCustDismissed] = useState(false);
+  useEffect(() => { setCustDismissed(false); }, [customerName, customerPhone]);
+
+  // Müşteri adını (HTML olabilir) düz metne çevirir
+  const stripHtml = (h: string) => (h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+
+  // Teklifteki müşteriyi Müşteriler'e kaydeder (yoksa)
+  const saveCustomerFromProposal = async () => {
+    const plainName = stripHtml(customerName);
+    if (!plainName) return;
+    const key = plainName.toLocaleLowerCase('tr');
+    const exists = customers.some((c) => c.brand_id === brandId && (c.name || '').trim().toLocaleLowerCase('tr') === key);
+    if (exists) return;
+    try {
+      await addCustomer({
+        id: `cust-${Date.now()}`,
+        brand_id: brandId,
+        name: plainName,
+        phone: customerPhone || '',
+        city: customerCity || '',
+        address: customerAddress || '',
+      });
+    } catch (e) {
+      console.error('Müşteri otomatik kaydı hatası:', e);
+    }
+  };
 
   const handleSave = async () => {
     if (!isFormValid) return alert('Teklifi Hazırlayan alanı zorunludur!');
@@ -564,6 +590,8 @@ export default function YeniTeklifPage() {
         };
         await addProposal(proposal);
       }
+      // Müşteri adını Müşteriler listesine de kaydet (yoksa)
+      await saveCustomerFromProposal();
       // IndexedDB yazmasının tamamlanması için kısa bekleme (alert event loop'u bloklar)
       await new Promise((r) => setTimeout(r, 300));
       router.push(`/${brandId}/teklifler`);
@@ -575,6 +603,20 @@ export default function YeniTeklifPage() {
   };
 
   const handlePrint = () => window.print();
+
+  // Yeni teklifte: girilen ad/telefon mevcut müşteriyle eşleşirse öneri göster
+  const custNameQ = stripHtml(customerName).toLocaleLowerCase('tr');
+  const custPhoneQ = (customerPhone || '').replace(/\s/g, '');
+  const custExactApplied = customers.some((c) => c.brand_id === brandId && custNameQ.length > 0 && (c.name || '').trim().toLocaleLowerCase('tr') === custNameQ && (c.phone || '').replace(/\s/g, '') === custPhoneQ);
+  const custSuggestions = (!editId && !custDismissed && !custExactApplied && (custNameQ.length >= 2 || custPhoneQ.length >= 3))
+    ? customers.filter((c) => c.brand_id === brandId).filter((c) => {
+        const cn = (c.name || '').trim().toLocaleLowerCase('tr');
+        const cp = (c.phone || '').replace(/\s/g, '');
+        const nameHit = custNameQ.length >= 2 && cn.includes(custNameQ);
+        const phoneHit = custPhoneQ.length >= 3 && cp.length > 0 && cp.includes(custPhoneQ);
+        return nameHit || phoneHit;
+      }).slice(0, 4)
+    : [];
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
@@ -989,6 +1031,29 @@ export default function YeniTeklifPage() {
             <AutoTextarea value={customerCity} onChange={setCustomerCity} className="w-full p-2 border border-gray-300 rounded-lg text-sm block" placeholder="Adres" />
           </div>
         </div>
+
+        {custSuggestions.length > 0 && (
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4" /> Kayıtlı müşteriniz olabilir — bilgileri doldurmak için seçin
+              </span>
+              <button onClick={() => setCustDismissed(true)} className="text-blue-400 hover:text-blue-700" title="Kapat"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {custSuggestions.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { selectCustomer(c); setCustDismissed(true); }}
+                  className="text-left bg-white border border-blue-200 rounded-lg px-3 py-1.5 hover:border-blue-400 hover:bg-blue-50 transition"
+                >
+                  <div className="text-sm font-semibold text-gray-800">{c.name}</div>
+                  {(c.phone || c.city) && <div className="text-[10px] text-gray-500">{[c.phone, c.city].filter(Boolean).join(' • ')}</div>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Settings Row + Exchange Rates */}

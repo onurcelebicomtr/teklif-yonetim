@@ -11,7 +11,34 @@ export default function MusterilerPage() {
   const params = useParams();
   const brandId = params.brand as string;
   const brand = getBrand(brandId);
-  const { customers, addCustomer, updateCustomer, removeCustomer, setCustomers } = useAppStore();
+  const { customers, proposals, addCustomer, updateCustomer, removeCustomer, setCustomers } = useAppStore();
+
+  // Teklifteki müşteri adını düz metne çevirir (HTML olabilir)
+  const stripHtml = (h: string) => (h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+
+  // Mevcut tekliflerdeki müşterileri Müşteriler listesine aktarır (yoksa)
+  const [importing, setImporting] = useState(false);
+  const backfillFromProposals = async () => {
+    const existing = new Set(customers.filter((c) => c.brand_id === brandId).map((c) => (c.name || '').trim().toLocaleLowerCase('tr')));
+    const toAdd: Record<string, { id: string; brand_id: string; name: string; phone: string; city: string; address: string }> = {};
+    proposals.filter((p) => p.brand_id === brandId).forEach((p) => {
+      const name = stripHtml(p.customer_name || '');
+      if (!name) return;
+      const key = name.toLocaleLowerCase('tr');
+      if (existing.has(key) || toAdd[key]) return;
+      toAdd[key] = { id: `cust-${Date.now()}-${Object.keys(toAdd).length}`, brand_id: brandId, name, phone: p.customer_phone || '', city: p.customer_city || '', address: p.customer_address || '' };
+    });
+    const list = Object.values(toAdd);
+    if (list.length === 0) return alert('Aktarılacak yeni müşteri yok — tekliflerdeki müşteriler zaten kayıtlı.');
+    if (!confirm(`${list.length} yeni müşteri tekliflerden aktarılacak. Devam edilsin mi?`)) return;
+    setImporting(true);
+    try {
+      for (const c of list) await addCustomer(c);
+      alert(`${list.length} müşteri aktarıldı.`);
+    } finally {
+      setImporting(false);
+    }
+  };
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,13 +90,23 @@ export default function MusterilerPage() {
           <h1 className="text-2xl font-bold text-gray-900">Müşteriler</h1>
           <p className="text-sm text-gray-500 mt-1">{brand.fullName} - Müşteri yönetimi</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', phone: '', city: '', address: '' }); }}
-          className="text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition flex items-center gap-2"
-          style={{ backgroundColor: brand.buttonColorHex }}
-        >
-          <Plus className="w-4 h-4" /> Yeni Müşteri
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={backfillFromProposals}
+            disabled={importing}
+            className="px-4 py-2.5 rounded-lg text-sm font-bold border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition flex items-center gap-2 disabled:opacity-60"
+            title="Mevcut tekliflerdeki müşterileri listeye aktar"
+          >
+            <Users className="w-4 h-4" /> {importing ? 'Aktarılıyor…' : 'Tekliflerden Aktar'}
+          </button>
+          <button
+            onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', phone: '', city: '', address: '' }); }}
+            className="text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition flex items-center gap-2"
+            style={{ backgroundColor: brand.buttonColorHex }}
+          >
+            <Plus className="w-4 h-4" /> Yeni Müşteri
+          </button>
+        </div>
       </div>
 
       {/* Form Modal */}
