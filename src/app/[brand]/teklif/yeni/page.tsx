@@ -12,7 +12,7 @@ import AutoTextarea from '@/components/AutoTextarea';
 import {
   Plus, Trash2, Copy, GripVertical, Eye, EyeOff, Truck, Save, FileDown,
   Printer, ArrowLeft, Search, Users, ChevronDown, RefreshCw, Package, UserCheck, AlertCircle, Boxes, X, Edit2,
-  List, LayoutGrid, ImagePlus, Type
+  List, LayoutGrid, ImagePlus, Type, MessageCircle
 } from 'lucide-react';
 
 export default function YeniTeklifPage() {
@@ -604,6 +604,30 @@ export default function YeniTeklifPage() {
 
   const handlePrint = () => window.print();
 
+  // WhatsApp'tan teklif özetini gönder (müşterinin numarasına, hazır metinle)
+  const sendWhatsApp = () => {
+    const plainName = stripHtml(customerName);
+    const digits = (customerPhone || '').replace(/\D/g, '');
+    let intl = '';
+    if (digits) {
+      if (digits.startsWith('90')) intl = digits;
+      else if (digits.startsWith('0')) intl = '90' + digits.slice(1);
+      else if (digits.length === 10) intl = '90' + digits;
+      else intl = digits;
+    }
+    const lines = [
+      plainName ? `Sayın ${plainName},` : 'Merhaba,',
+      `${brand.fullName} tarafından hazırlanan teklifiniz:`,
+      `📄 Teklif No: ${proposalNo}`,
+      projectName ? `🏷️ Proje: ${projectName}` : '',
+      `💰 Genel Toplam: ${formatCurrency(finalTotal, currency)}`,
+      `📞 ${brand.phone} · 🌐 ${brand.website}`,
+    ].filter(Boolean);
+    const text = encodeURIComponent(lines.join('\n'));
+    const url = intl ? `https://wa.me/${intl}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(url, '_blank');
+  };
+
   // Yeni teklifte: girilen ad/telefon mevcut müşteriyle eşleşirse öneri göster
   const custNameQ = stripHtml(customerName).toLocaleLowerCase('tr');
   const custPhoneQ = (customerPhone || '').replace(/\s/g, '');
@@ -738,6 +762,7 @@ export default function YeniTeklifPage() {
           <button onClick={handleDownloadPDF} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><FileDown className="w-4 h-4" /> PDF</button>
           <button onClick={handleDownloadJSON} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-orange-500 text-white hover:bg-orange-600 transition"><FileDown className="w-4 h-4" /> JSON</button>
           <button onClick={handleSave} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> Kaydet</button>
+          <button onClick={sendWhatsApp} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-[#25D366] text-white hover:bg-[#1eb457] transition" title="Teklif özetini WhatsApp'tan gönder"><MessageCircle className="w-4 h-4" /> WhatsApp</button>
           {!isFormValid && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Hazırlayan alanını doldurun</span>}
         </div>
 

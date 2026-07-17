@@ -6,6 +6,7 @@ import { useAppStore } from '@/lib/store';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FileDown, Printer, RotateCcw, Shuffle, Search, ChevronDown, ChevronUp, Save, Trash2, Clock } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { norm } from '@/lib/stok-types';
 
 interface SavedLabel {
   id: string;
@@ -141,11 +142,16 @@ export default function KargoEtiketPage() {
   };
 
   const filteredCustomers = useMemo(() => {
-    if (!customerSearch || customerSearch.length < 2) return [];
-    const s = customerSearch.toLowerCase();
-    return brandCustomers.filter(c =>
-      c.name.toLowerCase().includes(s) || (c.phone || '').includes(s) || (c.city || '').toLowerCase().includes(s)
-    ).slice(0, 10);
+    const s = norm(customerSearch);
+    const digits = customerSearch.replace(/\D/g, '');
+    // Boşken tümünü (ilk 50) göster; yazınca Türkçe-duyarsız filtrele
+    const base = [...brandCustomers].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
+    if (!s && !digits) return base.slice(0, 50);
+    return base.filter(c =>
+      norm(c.name).includes(s) ||
+      norm(c.city || '').includes(s) ||
+      (digits.length >= 3 && (c.phone || '').replace(/\D/g, '').includes(digits))
+    ).slice(0, 50);
   }, [customerSearch, brandCustomers]);
 
   const selectCustomer = (c: any) => {
@@ -334,7 +340,8 @@ export default function KargoEtiketPage() {
                 type="text" value={customerSearch}
                 onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); }}
                 onFocus={() => setShowCustomerDropdown(true)}
-                placeholder="Müşteri adı veya telefon ara..."
+                onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
+                placeholder="Kayıtlı müşteri ara (isim / telefon / şehir)…"
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500"
               />
               {showCustomerDropdown && filteredCustomers.length > 0 && (
