@@ -57,6 +57,7 @@ export default function KargoEtiketPage() {
   const [labelDate, setLabelDate] = useState(new Date().toLocaleDateString('tr-TR'));
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [labelSearch, setLabelSearch] = useState('');
   const [showForm, setShowForm] = useState(true);
   const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
   const [showSaved, setShowSaved] = useState(false);
@@ -310,11 +311,28 @@ export default function KargoEtiketPage() {
       {showSaved && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-700 mb-3">Kayıtlı Etiketler</h3>
-          {savedLabels.filter(l => l.brandId === brandId).length === 0 ? (
-            <p className="text-sm text-gray-400 italic">Henüz kayıtlı etiket yok.</p>
-          ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {savedLabels.filter(l => l.brandId === brandId).map(label => (
+          {(() => {
+          const brandLabels = savedLabels.filter(l => l.brandId === brandId);
+          const s = norm(labelSearch);
+          const digits = labelSearch.replace(/\D/g, '');
+          const list = (!s && !digits) ? brandLabels : brandLabels.filter(l =>
+            norm(l.recipientName || '').includes(s) ||
+            norm(l.city || '').includes(s) ||
+            norm(l.tracking || '').includes(s) ||
+            (digits.length >= 2 && (l.tracking || '').replace(/\D/g, '').includes(digits))
+          );
+          if (brandLabels.length === 0) return <p className="text-sm text-gray-400 italic">Henüz kayıtlı etiket yok.</p>;
+          return (
+            <>
+              <div className="relative mb-3">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                <input value={labelSearch} onChange={(e) => setLabelSearch(e.target.value)} placeholder="Kayıtlı etiket ara (isim / takip no / şehir)…" className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500" />
+              </div>
+              {list.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">Eşleşen etiket bulunamadı.</p>
+              ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+              {list.map(label => (
                 <div key={label.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition">
                   <button onClick={() => loadLabel(label)} className="flex-1 text-left">
                     <div className="font-bold text-sm text-gray-900">{label.recipientName}</div>
@@ -327,6 +345,9 @@ export default function KargoEtiketPage() {
               ))}
             </div>
           )}
+            </>
+          );
+          })()}
         </div>
       )}
 

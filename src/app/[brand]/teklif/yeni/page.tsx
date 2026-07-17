@@ -604,8 +604,11 @@ export default function YeniTeklifPage() {
 
   const handlePrint = () => window.print();
 
-  // WhatsApp'tan teklif özetini gönder (müşterinin numarasına, hazır metinle)
-  const sendWhatsApp = () => {
+  const [waBusy, setWaBusy] = useState(false);
+  // WhatsApp'tan gönder: mobilde PDF'i dosya olarak paylaşır (navigator.share),
+  // masaüstü/desteklenmeyen yerde hazır metinle WhatsApp'ı açar.
+  const sendWhatsApp = async () => {
+    if (waBusy) return;
     const plainName = stripHtml(customerName);
     const digits = (customerPhone || '').replace(/\D/g, '');
     let intl = '';
@@ -615,16 +618,47 @@ export default function YeniTeklifPage() {
       else if (digits.length === 10) intl = '90' + digits;
       else intl = digits;
     }
-    const lines = [
+    const message = [
       plainName ? `Sayın ${plainName},` : 'Merhaba,',
       `${brand.fullName} tarafından hazırlanan teklifiniz:`,
       `📄 Teklif No: ${proposalNo}`,
       projectName ? `🏷️ Proje: ${projectName}` : '',
       `💰 Genel Toplam: ${formatCurrency(finalTotal, currency)}`,
       `📞 ${brand.phone} · 🌐 ${brand.website}`,
-    ].filter(Boolean);
-    const text = encodeURIComponent(lines.join('\n'));
-    const url = intl ? `https://wa.me/${intl}?text=${text}` : `https://wa.me/?text=${text}`;
+    ].filter(Boolean).join('\n');
+    const fileName = `${proposalNo}_${(projectName || 'Teklif').replace(/[\\/]/g, '-')}.pdf`;
+
+    // 1) PDF'i doğrudan paylaş (mobil cihazlarda WhatsApp'a dosya olarak eklenir)
+    try {
+      const nav = navigator as any;
+      if (printRef.current && nav.canShare && typeof nav.share === 'function') {
+        setWaBusy(true);
+        const html2pdf = (await import('html2pdf.js')).default;
+        const opt = {
+          margin: [5, 5, 10, 5],
+          filename: fileName,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+          pagebreak: { mode: ['css'] },
+        };
+        const blob: Blob = await (html2pdf().set(opt).from(printRef.current) as any).outputPdf('blob');
+        const file = new File([blob], fileName, { type: 'application/pdf' });
+        if (nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], text: message, title: 'Teklif' });
+          setWaBusy(false);
+          return;
+        }
+        setWaBusy(false);
+      }
+    } catch (e: any) {
+      setWaBusy(false);
+      if (e && e.name === 'AbortError') return; // kullanıcı paylaşımı iptal etti
+      // diğer hatalar → aşağıdaki metin fallback'ine düş
+    }
+
+    // 2) Fallback (masaüstü / dosya paylaşımı desteklenmiyor): hazır metinle WhatsApp aç
+    const url = intl ? `https://wa.me/${intl}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
 
@@ -762,7 +796,7 @@ export default function YeniTeklifPage() {
           <button onClick={handleDownloadPDF} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><FileDown className="w-4 h-4" /> PDF</button>
           <button onClick={handleDownloadJSON} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-orange-500 text-white hover:bg-orange-600 transition"><FileDown className="w-4 h-4" /> JSON</button>
           <button onClick={handleSave} disabled={!isFormValid} className={`h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 transition ${isFormValid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> Kaydet</button>
-          <button onClick={sendWhatsApp} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-[#25D366] text-white hover:bg-[#1eb457] transition" title="Teklif özetini WhatsApp'tan gönder"><MessageCircle className="w-4 h-4" /> WhatsApp</button>
+          <button onClick={sendWhatsApp} disabled={waBusy} className="h-9 px-3 rounded-lg text-sm font-bold flex items-center gap-1.5 bg-[#25D366] text-white hover:bg-[#1eb457] transition disabled:opacity-60" title="Teklifi WhatsApp'tan gönder (mobilde PDF ekli)"><MessageCircle className="w-4 h-4" /> {waBusy ? 'Hazırlanıyor…' : 'WhatsApp'}</button>
           {!isFormValid && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Hazırlayan alanını doldurun</span>}
         </div>
 
