@@ -208,6 +208,27 @@ export default function YeniTeklifPage() {
     dragOverItem.current = null;
   };
 
+  // Numaralı alana yazarak ürünü o ürün sırasına taşı (ara başlıklar hariç sayılır)
+  const moveItemToPosition = (itemId: string, targetPos: number) => {
+    setItems((prev) => {
+      const arr = [...prev];
+      const from = arr.findIndex((i) => i.id === itemId);
+      if (from === -1) return prev;
+      const [moved] = arr.splice(from, 1);
+      const productCount = arr.filter((i) => i.type !== 'section').length;
+      const pos = Math.max(1, Math.min(targetPos, productCount + 1));
+      let count = 0, insertAt = arr.length;
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i].type !== 'section') {
+          count++;
+          if (count === pos) { insertAt = i; break; }
+        }
+      }
+      arr.splice(insertAt, 0, moved);
+      return arr;
+    });
+  };
+
   // Ürün fiyatını TRY'ye çevir (ürün currency'sine göre)
   const productPriceToTry = (amount: number, productCurrency?: string) => {
     const cur = (productCurrency || 'TRY').toUpperCase();
@@ -1439,7 +1460,18 @@ export default function YeniTeklifPage() {
                   <tr key={item.id} onDragEnter={() => handleDragEnter(idx)} onDragOver={(e) => e.preventDefault()} className={`border-b border-gray-100 hover:bg-blue-50/30 transition ${item.shipped ? 'opacity-40 line-through' : ''}`}>
                     <td className="py-3 px-2 cursor-move text-center" draggable onDragStart={(e) => { e.stopPropagation(); handleDragStart(idx); }} onDragEnd={handleDrop}>
                       <GripVertical className="w-3.5 h-3.5 text-gray-300 inline" />
-                      <div className="text-[10px] text-gray-400 mt-0.5">{pIdx}</div>
+                      <input
+                        key={`pos-${item.id}-${pIdx}`}
+                        type="number" min={1}
+                        defaultValue={pIdx}
+                        draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                        onBlur={(e) => { const v = parseInt(e.target.value); if (v && v !== pIdx) moveItemToPosition(item.id, v); else e.target.value = String(pIdx); }}
+                        title="Sıra numarası — yazıp Enter'a basınca bu sıraya taşınır"
+                        className="mt-0.5 w-8 text-[11px] text-center text-gray-500 font-bold bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none"
+                      />
                     </td>
                     <td className="py-3 px-2">
                       <div className="relative w-12 h-12 border rounded bg-white overflow-hidden group">
