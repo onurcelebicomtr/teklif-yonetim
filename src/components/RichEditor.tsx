@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { StickyNote } from 'lucide-react';
 
 // Basit zengin metin editörü (contentEditable). Kalın/italik/altı çizili,
 // yazı boyutu, renk, madde/numaralı liste, alt satır. Değer HTML olarak tutulur.
@@ -18,6 +19,7 @@ export default function RichEditor({
   minHeight = 40,
   lists = true,
   toolbarOnFocus = false,
+  onSnippetClick,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -25,6 +27,7 @@ export default function RichEditor({
   minHeight?: number;
   lists?: boolean;
   toolbarOnFocus?: boolean;
+  onSnippetClick?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [colorOpen, setColorOpen] = useState(false);
@@ -97,6 +100,15 @@ export default function RichEditor({
         )}
         <span className="w-px h-4 bg-gray-300 mx-0.5" />
         <TB onClick={() => exec('removeFormat')} title="Biçimi temizle"><span className="text-[10px]">✕</span></TB>
+        {onSnippetClick && (
+          <>
+            <span className="w-px h-4 bg-gray-300 mx-0.5" />
+            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onSnippetClick} title="Hazır açıklamalar"
+              className="h-6 px-1.5 flex items-center gap-1 rounded text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors">
+              <StickyNote className="w-3.5 h-3.5" /> Notlar
+            </button>
+          </>
+        )}
       </div>
       )}
       <div

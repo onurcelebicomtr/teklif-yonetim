@@ -12,7 +12,7 @@ import AutoTextarea from '@/components/AutoTextarea';
 import {
   Plus, Trash2, Copy, GripVertical, Eye, EyeOff, Truck, Save, FileDown,
   Printer, ArrowLeft, Search, Users, ChevronDown, RefreshCw, Package, UserCheck, AlertCircle, Boxes, X, Edit2,
-  List, LayoutGrid, ImagePlus, Type, MessageCircle
+  List, LayoutGrid, ImagePlus, Type, MessageCircle, StickyNote
 } from 'lucide-react';
 
 export default function YeniTeklifPage() {
@@ -519,6 +519,39 @@ export default function YeniTeklifPage() {
   const [saving, setSaving] = useState(false);
   const [custDismissed, setCustDismissed] = useState(false);
   useEffect(() => { setCustDismissed(false); }, [customerName, customerPhone]);
+
+  // Hazır açıklama/not kütüphanesi
+  const [snippets, setSnippets] = useState<{ id: number; text: string }[]>([]);
+  const [snippetTargetId, setSnippetTargetId] = useState<string | null>(null); // notu ekleyecek kalem
+  const [newSnippet, setNewSnippet] = useState('');
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.from('teklif_snippets').select('id, text').eq('brand_id', brandId).order('created_at');
+        if (data) setSnippets(data as { id: number; text: string }[]);
+      } catch { /* tablo yoksa boş kalır */ }
+    })();
+  }, [brandId]);
+  const addSnippet = async () => {
+    const text = newSnippet.trim();
+    if (!text) return;
+    const id = Date.now();
+    setSnippets((s) => [...s, { id, text }]);
+    setNewSnippet('');
+    try { await supabase.from('teklif_snippets').insert({ id, brand_id: brandId, text }); } catch {}
+  };
+  const deleteSnippet = async (id: number) => {
+    setSnippets((s) => s.filter((x) => x.id !== id));
+    try { await supabase.from('teklif_snippets').delete().eq('id', id); } catch {}
+  };
+  const escSnip = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const insertSnippet = (text: string) => {
+    if (!snippetTargetId) return;
+    const item = items.find((i) => i.id === snippetTargetId);
+    const cur = (item?.description || '').trim();
+    const html = `<div>${escSnip(text)}</div>`;
+    updateItem(snippetTargetId, 'description', cur ? cur + html : html);
+  };
 
   // Müşteri adını (HTML olabilir) düz metne çevirir
   const stripHtml = (h: string) => (h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -1436,7 +1469,7 @@ export default function YeniTeklifPage() {
                         <input type="text" value={item.sku || ''} onChange={(e) => updateItem(item.id, 'sku', e.target.value)} className="text-[10px] text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none w-32" placeholder="SKU girin" />
                       </div>
                       <div className="mt-1">
-                        <RichEditor value={item.description || ''} onChange={(html) => updateItem(item.id, 'description', html)} placeholder="Teknik özellikler (yazmak için tıklayın)" minHeight={44} toolbarOnFocus />
+                        <RichEditor value={item.description || ''} onChange={(html) => updateItem(item.id, 'description', html)} placeholder="Teknik özellikler (yazmak için tıklayın)" minHeight={44} toolbarOnFocus onSnippetClick={() => setSnippetTargetId(item.id)} />
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center">
@@ -1767,6 +1800,37 @@ export default function YeniTeklifPage() {
                     Sol taraftan bir paket seçin veya yeni paket oluşturun
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hazır Açıklama/Not kartı */}
+      {snippetTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSnippetTargetId(null)} />
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50 shrink-0">
+              <h3 className="font-extrabold text-gray-800 flex items-center gap-2"><StickyNote className="w-4 h-4 text-blue-600" /> Hazır Açıklamalar</h3>
+              <button onClick={() => setSnippetTargetId(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="px-5 py-4 overflow-auto space-y-2">
+              <p className="text-xs text-gray-400 mb-1">Bir nota tıkla → seçili ürünün açıklamasına eklenir.</p>
+              {snippets.length === 0 && <p className="text-sm text-gray-400 italic py-2">Henüz kayıtlı not yok. Aşağıdan ekleyebilirsin.</p>}
+              {snippets.map((s) => (
+                <div key={s.id} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 hover:border-blue-300 transition">
+                  <button onClick={() => insertSnippet(s.text)} className="flex-1 text-left text-sm text-gray-700">{s.text}</button>
+                  <button onClick={() => insertSnippet(s.text)} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded shrink-0 hover:bg-blue-100">+ Ekle</button>
+                  <button onClick={() => deleteSnippet(s.id)} className="text-gray-300 hover:text-red-500 shrink-0" title="Notu sil"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Yeni Not Ekle</label>
+              <div className="flex gap-2">
+                <input value={newSnippet} onChange={(e) => setNewSnippet(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSnippet(); } }} placeholder="Örn: Deterjan pompası hariçtir." className="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500" />
+                <button onClick={addSnippet} className="px-4 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 shrink-0">Kaydet</button>
               </div>
             </div>
           </div>
