@@ -1028,7 +1028,7 @@ export default function YeniTeklifPage() {
           <div className="grid grid-cols-2 gap-6 text-[10px] text-gray-500 border-t pt-4 mt-6" style={{ pageBreakInside: 'avoid' }}>
             <div>
               <h4 className="font-bold text-gray-900 uppercase mb-1 text-xs">Şartlar ve Koşullar</h4>
-              <div className="whitespace-pre-wrap leading-relaxed">{conditions}</div>
+              <div className="leading-relaxed rich-content" dangerouslySetInnerHTML={{ __html: renderRichHtml(conditions) }} />
             </div>
             <div className="text-right">
               {preparedBy && (
@@ -1665,7 +1665,7 @@ export default function YeniTeklifPage() {
       {/* Conditions */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
         <h3 className="text-sm font-bold text-gray-700 uppercase mb-3">Şartlar ve Koşullar</h3>
-        <textarea value={conditions} onChange={(e) => setConditions(e.target.value)} className="w-full h-28 border border-gray-300 rounded-lg p-3 text-sm outline-none resize-none focus:border-blue-500" />
+        <RichEditor value={conditions} onChange={setConditions} placeholder="Şartlar ve koşullar (yazmak için tıklayın)" minHeight={100} toolbarOnFocus />
       </div>
 
       {/* Bottom Actions */}
