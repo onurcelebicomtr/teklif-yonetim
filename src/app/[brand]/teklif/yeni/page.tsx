@@ -533,24 +533,22 @@ export default function YeniTeklifPage() {
     })();
   }, [brandId]);
   const addSnippet = async () => {
-    const text = newSnippet.trim();
-    if (!text) return;
+    const html = newSnippet.trim();
+    if (!stripHtml(html)) return; // görünür içerik yoksa ekleme
     const id = Date.now();
-    setSnippets((s) => [...s, { id, text }]);
+    setSnippets((s) => [...s, { id, text: html }]);
     setNewSnippet('');
-    try { await supabase.from('teklif_snippets').insert({ id, brand_id: brandId, text }); } catch {}
+    try { await supabase.from('teklif_snippets').insert({ id, brand_id: brandId, text: html }); } catch {}
   };
   const deleteSnippet = async (id: number) => {
     setSnippets((s) => s.filter((x) => x.id !== id));
     try { await supabase.from('teklif_snippets').delete().eq('id', id); } catch {}
   };
-  const escSnip = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const insertSnippet = (text: string) => {
     if (!snippetTargetId) return;
     const item = items.find((i) => i.id === snippetTargetId);
     const cur = (item?.description || '').trim();
-    const html = `<div>${escSnip(text)}</div>`;
-    updateItem(snippetTargetId, 'description', cur ? cur + html : html);
+    updateItem(snippetTargetId, 'description', cur ? cur + text : text);
   };
 
   // Müşteri adını (HTML olabilir) düz metne çevirir
@@ -1820,17 +1818,17 @@ export default function YeniTeklifPage() {
               {snippets.length === 0 && <p className="text-sm text-gray-400 italic py-2">Henüz kayıtlı not yok. Aşağıdan ekleyebilirsin.</p>}
               {snippets.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 hover:border-blue-300 transition">
-                  <button onClick={() => insertSnippet(s.text)} className="flex-1 text-left text-sm text-gray-700">{s.text}</button>
+                  <button onClick={() => insertSnippet(s.text)} className="flex-1 text-left text-sm text-gray-700 rich-content" dangerouslySetInnerHTML={{ __html: renderRichHtml(s.text) }} />
                   <button onClick={() => insertSnippet(s.text)} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded shrink-0 hover:bg-blue-100">+ Ekle</button>
                   <button onClick={() => deleteSnippet(s.id)} className="text-gray-300 hover:text-red-500 shrink-0" title="Notu sil"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
             <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Yeni Not Ekle</label>
-              <div className="flex gap-2">
-                <input value={newSnippet} onChange={(e) => setNewSnippet(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSnippet(); } }} placeholder="Örn: Deterjan pompası hariçtir." className="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500" />
-                <button onClick={addSnippet} className="px-4 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 shrink-0">Kaydet</button>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Yeni Not Ekle (biçimlendirebilirsin)</label>
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0"><RichEditor value={newSnippet} onChange={setNewSnippet} placeholder="Örn: Deterjan pompası hariçtir." minHeight={44} /></div>
+                <button onClick={addSnippet} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 shrink-0">Kaydet</button>
               </div>
             </div>
           </div>
