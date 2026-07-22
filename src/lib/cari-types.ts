@@ -16,6 +16,12 @@ export const isDebtType = (t: string) => t === 'borc' || t === 'odeme_al';
 // Ödeme yöntemi girilen tipler (ödeme yap / ödeme al)
 export const isPaymentType = (t: string) => t === 'alacak' || t === 'odeme_al';
 
+export interface CariAttachment {
+  path: string;
+  name: string;
+  type: string;
+}
+
 export interface CariTransaction {
   id: number;
   account_id: number;
@@ -25,6 +31,7 @@ export interface CariTransaction {
   amount: number;
   payment_method?: string | null;
   installments?: string | null;
+  attachments?: CariAttachment[];
 }
 
 export interface CariUser {

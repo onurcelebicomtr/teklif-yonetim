@@ -18,7 +18,7 @@ import {
 import {
   Lock, LogOut, Plus, Pencil, Trash2, Search, Settings, Bolt, X, FileDown,
   Printer, Upload, Users, ArrowLeft, TrendingUp, TrendingDown, KeyRound, UserPlus,
-  Wallet, ChevronRight, Loader2, ShieldCheck,
+  Wallet, ChevronRight, Loader2, ShieldCheck, Paperclip, FileText, Image as ImageIcon, Loader,
 } from 'lucide-react';
 
 const MUTPRO_LOGO = '/logos/mutpro-mavi-logo.jpeg';
@@ -360,6 +360,7 @@ function CariApp({ me, onLogout }: { me: string | null; onLogout: () => void }) 
           onDeleteCustomer={() => deleteCustomer(current.id)}
           onBack={backToDash}
           showToast={showToast}
+          onReload={loadData}
         />
       ) : null}
 
@@ -558,7 +559,7 @@ const FILTER_LABELS: Record<DateFilter, string> = {
   lastMonth: 'Geçen Ay', '2026': '2026 Yılı', '2025': '2025 Yılı', '2024': '2024 Yılı',
 };
 
-function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTransaction, onEditCustomer, onDeleteCustomer, onBack, showToast }: {
+function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTransaction, onEditCustomer, onDeleteCustomer, onBack, showToast, onReload }: {
   account: CariAccount;
   transactions: CariTransaction[];
   onSaveTransaction: (rec: Partial<CariTransaction>) => Promise<boolean>;
@@ -567,10 +568,12 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
   onDeleteCustomer: () => void;
   onBack: () => void;
   showToast: (m: string) => void;
+  onReload: () => Promise<void> | void;
 }) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<CariTransaction | null>(null);
+  const [attachFor, setAttachFor] = useState<CariTransaction | null>(null);
 
   const custTrans = useMemo(
     () => transactions.filter((t) => t.account_id === account.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
