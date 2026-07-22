@@ -173,6 +173,20 @@ export default function KargoEtiketPage() {
 
   useEffect(() => { generateTracking(); }, [generateTracking]);
 
+  // Tekliften "Etiket Oluştur" ile gelen bilgileri doldur (alıcı + paket içeriği)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('kargoPrefill');
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (p.recipientName) setRecipientName(p.recipientName);
+      if (p.phone) setPhone(p.phone);
+      if (p.address) setAddress(p.address);
+      if (p.product) setProduct(p.product);
+      sessionStorage.removeItem('kargoPrefill');
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!tracking) return;
     const loadBarcode = async () => {

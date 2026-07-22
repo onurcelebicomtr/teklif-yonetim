@@ -656,6 +656,23 @@ export default function YeniTeklifPage() {
 
   const handlePrint = () => window.print();
 
+  // Tekliften kargo etiketi oluştur: alıcı bilgileri + ürün adları (maddeli) kargo sayfasına taşınır
+  const createLabel = () => {
+    const esc = (s: string) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const productItems = items.filter((i) => i.type !== 'section' && (i.name || '').trim());
+    const productHtml = productItems.length
+      ? `<ul>${productItems.map((i) => `<li>${esc(i.name)}</li>`).join('')}</ul>`
+      : '';
+    const prefill = {
+      recipientName: stripHtml(customerName),
+      phone: customerPhone || '',
+      address: customerCity || customerAddress || '',
+      product: productHtml,
+    };
+    try { sessionStorage.setItem('kargoPrefill', JSON.stringify(prefill)); } catch {}
+    router.push(`/${brandId}/kargo-etiket`);
+  };
+
   const [waBusy, setWaBusy] = useState(false);
   // WhatsApp'tan gönder: mobilde PDF'i dosya olarak paylaşır (navigator.share),
   // masaüstü/desteklenmeyen yerde hazır metinle WhatsApp'ı açar.
@@ -1077,7 +1094,8 @@ export default function YeniTeklifPage() {
             />
           </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center">
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center">
+          <button onClick={createLabel} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-purple-700"><Truck className="w-4 h-4" /> Etiket Oluştur</button>
           <button onClick={() => setIsPrintMode(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-900"><Eye className="w-4 h-4" /> Önizle</button>
           <button onClick={handleDownloadJSON} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600"><FileDown className="w-4 h-4" /> JSON</button>
           <button onClick={handleSave} disabled={!isFormValid || saving} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${isFormValid && !saving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}><Save className="w-4 h-4" /> {saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
