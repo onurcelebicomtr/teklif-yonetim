@@ -62,7 +62,7 @@ export default function YeniTeklifPage() {
   const [installment, setInstallment] = useState<number>(0); // 0=taksit yok, 2-12=taksit sayısı
   const [showInstallment, setShowInstallment] = useState(false);
   const [conditions, setConditions] = useState(
-    `- Bu teklif 3 gün süreyle geçerlidir.\n- Stok durumuna göre tarafınıza bilgilendirilmektedir.\n- Fiyatlarımıza KDV hariçtir (Listede hariç gösterilir, toplamda eklenir).`
+    `<ul><li>Bu teklif 3 gün süreyle geçerlidir.</li><li>Stok durumuna göre tarafınıza bilgilendirilmektedir.</li><li>Fiyatlarımıza KDV hariçtir (Listede hariç gösterilir, toplamda eklenir).</li></ul>`
   );
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);

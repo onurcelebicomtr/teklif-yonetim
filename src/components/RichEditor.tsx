@@ -34,11 +34,13 @@ export default function RichEditor({
   const [focused, setFocused] = useState(false);
   const showToolbar = !toolbarOnFocus || focused;
 
-  // İçeriği yalnızca dışarıdan farklıysa güncelle (imleç zıplamasın)
+  // İçeriği yalnızca dışarıdan farklıysa güncelle (imleç zıplamasın).
+  // Düz metin (etiket yok) ise satır sonlarını <br>'e çevir ki tek satıra binmesin.
   useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== (value || '')) {
-      ref.current.innerHTML = value || '';
-    }
+    if (!ref.current) return;
+    const v = value || '';
+    const html = /<[a-z][\s\S]*>/i.test(v) ? v : v.replace(/\n/g, '<br>');
+    if (ref.current.innerHTML !== html) ref.current.innerHTML = html;
   }, [value]);
 
   const exec = (cmd: string, arg?: string) => {
