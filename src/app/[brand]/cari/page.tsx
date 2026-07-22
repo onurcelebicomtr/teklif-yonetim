@@ -18,7 +18,7 @@ import {
 import {
   Lock, LogOut, Plus, Pencil, Trash2, Search, Settings, Bolt, X, FileDown,
   Printer, Upload, Users, ArrowLeft, TrendingUp, TrendingDown, KeyRound, UserPlus,
-  Wallet, ChevronRight, Loader2, ShieldCheck, Paperclip, FileText, Image as ImageIcon, Loader,
+  Wallet, ChevronRight, Loader2, ShieldCheck, Paperclip, FileText, Loader,
 } from 'lucide-react';
 
 const MUTPRO_LOGO = '/logos/mutpro-mavi-logo.jpeg';
@@ -574,6 +574,38 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<CariTransaction | null>(null);
   const [attachFor, setAttachFor] = useState<CariTransaction | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadAttachment = async (file: File) => {
+    if (!attachFor) return;
+    if (file.size > 8 * 1024 * 1024) { showToast('Dosya en fazla 8 MB olabilir.'); return; }
+    setUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('transactionId', String(attachFor.id));
+    try {
+      const res = await fetch('/api/cari/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Belge yüklenemedi.'); return; }
+      await onReload();
+      setAttachFor((prev) => (prev ? { ...prev, attachments: data.attachments } : prev));
+      showToast('Belge eklendi.');
+    } catch {
+      showToast('Yükleme hatası.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAttachment = async (path: string) => {
+    if (!attachFor || !confirm('Bu belge silinsin mi?')) return;
+    const res = await fetch(`/api/cari/upload?transactionId=${attachFor.id}&path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Silinemedi.'); return; }
+    await onReload();
+    setAttachFor((prev) => (prev ? { ...prev, attachments: data.attachments } : prev));
+    showToast('Belge silindi.');
+  };
 
   const custTrans = useMemo(
     () => transactions.filter((t) => t.account_id === account.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
@@ -744,9 +776,15 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
                         <td className={`p-3 text-right font-mono ${!isDebt ? 'text-emerald-600 font-bold' : 'text-gray-300'}`}>{!isDebt ? currencyFmt.format(t.amount) : '-'}</td>
                         <td className="p-3 text-right font-mono font-bold text-gray-800 whitespace-nowrap">{currencyFmt.format(balance)}</td>
                         <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditing(t)} className="text-blue-500 hover:bg-blue-500 hover:text-white p-1.5 rounded" title="Düzenle"><Pencil className="w-3 h-3" /></button>
-                            <button onClick={() => onDeleteTransaction(t.id)} className="text-gray-400 hover:bg-rose-500 hover:text-white p-1.5 rounded" title="Sil"><Trash2 className="w-3 h-3" /></button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => setAttachFor(t)} className={`relative p-1.5 rounded transition ${t.attachments?.length ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-gray-300 hover:bg-gray-100'}`} title="Dekont / belge ekle">
+                              <Paperclip className="w-3.5 h-3.5" />
+                              {!!t.attachments?.length && <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">{t.attachments.length}</span>}
+                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => setEditing(t)} className="text-blue-500 hover:bg-blue-500 hover:text-white p-1.5 rounded" title="Düzenle"><Pencil className="w-3 h-3" /></button>
+                              <button onClick={() => onDeleteTransaction(t.id)} className="text-gray-400 hover:bg-rose-500 hover:text-white p-1.5 rounded" title="Sil"><Trash2 className="w-3 h-3" /></button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -762,6 +800,50 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
           </div>
         </div>
       </div>
+
+      {/* Dekont / Belge modalı */}
+      {attachFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setAttachFor(null)} />
+          <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50 shrink-0">
+              <div className="min-w-0">
+                <h3 className="font-extrabold text-gray-800 flex items-center gap-2"><Paperclip className="w-4 h-4 text-blue-600" /> Dekont / Belgeler</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5 truncate">{attachFor.description} · {dateFmt(attachFor.date)}</p>
+              </div>
+              <button onClick={() => setAttachFor(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 shrink-0"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="px-5 py-4 overflow-auto space-y-2">
+              {(!attachFor.attachments || attachFor.attachments.length === 0) && (
+                <p className="text-sm text-gray-400 italic py-2">Henüz belge yok. Aşağıdan PDF/JPG/PNG ekleyebilirsin.</p>
+              )}
+              {attachFor.attachments?.map((a) => {
+                const isImg = (a.type || '').startsWith('image/');
+                const url = `/api/cari/file?path=${encodeURIComponent(a.path)}`;
+                return (
+                  <div key={a.path} className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-2">
+                    <a href={url} target="_blank" rel="noreferrer" className="shrink-0">
+                      {isImg
+                        ? <img src={url} alt={a.name} className="w-12 h-12 object-cover rounded border" />
+                        : <div className="w-12 h-12 rounded border bg-white flex items-center justify-center text-rose-500"><FileText className="w-6 h-6" /></div>}
+                    </a>
+                    <a href={url} target="_blank" rel="noreferrer" className="flex-1 min-w-0 text-sm text-gray-700 hover:text-blue-600 truncate">{a.name}</a>
+                    <button onClick={() => removeAttachment(a.path)} className="text-gray-300 hover:text-red-500 shrink-0 p-1" title="Belgeyi sil"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+              <label className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-bold cursor-pointer transition ${uploading ? 'bg-gray-200 text-gray-400 cursor-wait' : 'text-white'}`} style={uploading ? undefined : { background: NAVY }}>
+                {uploading ? <><Loader className="w-4 h-4 animate-spin" /> Yükleniyor…</> : <><Upload className="w-4 h-4" /> Belge Ekle (PDF / JPG / PNG)</>}
+                <input type="file" accept="application/pdf,image/jpeg,image/png" className="hidden" disabled={uploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAttachment(f); e.target.value = ''; }} />
+              </label>
+              <p className="text-[10px] text-gray-400 mt-1.5 text-center">En fazla 8 MB · PDF, JPG, PNG</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
