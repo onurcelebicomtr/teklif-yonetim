@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FileDown, Printer, RotateCcw, Shuffle, Search, ChevronDown, ChevronUp, Save, Trash2, Clock } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { norm } from '@/lib/stok-types';
+import RichEditor, { renderRichHtml } from '@/components/RichEditor';
 
 interface SavedLabel {
   id: string;
@@ -423,7 +424,7 @@ export default function KargoEtiketPage() {
 
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-gray-500 uppercase">Paket İçeriği</h3>
-            <textarea value={product} onChange={(e) => setProduct(e.target.value)} rows={3} placeholder="Ürünleri buraya listeleyin..." className="w-full p-2 border border-gray-300 rounded-lg text-sm resize-none" />
+            <RichEditor value={product} onChange={setProduct} placeholder="Ürünleri buraya listeleyin..." minHeight={80} toolbarOnFocus />
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="text-[10px] text-gray-400 block mb-0.5">Adet</label>
@@ -565,15 +566,17 @@ export default function KargoEtiketPage() {
                       İçerik Bilgisi / Content
                     </div>
                     <div style={{ flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
-                      <div style={{
-                        fontSize: product.length > 200 ? '11px' : '13px',
+                      <div className="rich-content" style={{
+                        fontSize: product.replace(/<[^>]*>/g, '').length > 200 ? '11px' : '13px',
                         color: product ? '#374151' : '#d1d5db',
-                        fontWeight: product ? 400 : 400,
+                        fontWeight: 400,
                         whiteSpace: 'pre-wrap',
                         lineHeight: 1.5,
                         fontStyle: product ? 'normal' : 'italic',
                       }}>
-                        {product || 'Ürün içeriği girilmedi...'}
+                        {product
+                          ? <span dangerouslySetInnerHTML={{ __html: renderRichHtml(product) }} />
+                          : 'Ürün içeriği girilmedi...'}
                       </div>
                     </div>
                     {note && (
