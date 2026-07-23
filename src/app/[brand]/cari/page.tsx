@@ -607,6 +607,31 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
     showToast('Belge silindi.');
   };
 
+  // Belge modalı açıkken görseli kopyala-yapıştır (Ctrl/Cmd+V) ile yükle
+  useEffect(() => {
+    if (!attachFor) return;
+    const onPaste = (e: ClipboardEvent) => {
+      if (uploading) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const it of Array.from(items)) {
+        if (it.type.startsWith('image/')) {
+          const blob = it.getAsFile();
+          if (blob) {
+            e.preventDefault();
+            const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+            const file = blob.name && blob.name !== 'image.png' ? blob : new File([blob], `yapistirilan_${Date.now()}.${ext}`, { type: blob.type });
+            uploadAttachment(file);
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachFor, uploading]);
+
   const custTrans = useMemo(
     () => transactions.filter((t) => t.account_id === account.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [transactions, account.id]
@@ -839,7 +864,7 @@ function CustomerDetail({ account, transactions, onSaveTransaction, onDeleteTran
                 <input type="file" accept="application/pdf,image/jpeg,image/png" className="hidden" disabled={uploading}
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAttachment(f); e.target.value = ''; }} />
               </label>
-              <p className="text-[10px] text-gray-400 mt-1.5 text-center">En fazla 8 MB · PDF, JPG, PNG</p>
+              <p className="text-[10px] text-gray-400 mt-1.5 text-center">En fazla 8 MB · PDF, JPG, PNG · veya bir görseli kopyalayıp <b>Ctrl/Cmd+V</b> ile yapıştır</p>
             </div>
           </div>
         </div>
