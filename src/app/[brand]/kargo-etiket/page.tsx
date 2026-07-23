@@ -59,6 +59,20 @@ export default function KargoEtiketPage() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [labelSearch, setLabelSearch] = useState('');
+  // İçerik kutusu: yazıyı kutuya sığana kadar otomatik küçült
+  const contentBoxRef = useRef<HTMLDivElement>(null);
+  const contentInnerRef = useRef<HTMLDivElement>(null);
+  const [contentFont, setContentFont] = useState(13);
+  const contentLineCount = product ? ((product.match(/<li/gi) || []).length || product.split(/<br|<div|\n/).filter((l) => l.replace(/<[^>]*>/g, '').trim()).length || 1) : 0;
+  const contentCols = contentLineCount > 6 ? 2 : 1;
+  useEffect(() => {
+    const box = contentBoxRef.current, inner = contentInnerRef.current;
+    if (!box || !inner) return;
+    let size = 13;
+    inner.style.fontSize = `${size}px`;
+    while (size > 7 && inner.scrollHeight > box.clientHeight) { size -= 0.5; inner.style.fontSize = `${size}px`; }
+    setContentFont(size);
+  }, [product, contentCols]);
   const [showForm, setShowForm] = useState(true);
   const [savedLabels, setSavedLabels] = useState<SavedLabel[]>([]);
   const [showSaved, setShowSaved] = useState(false);
@@ -579,14 +593,16 @@ export default function KargoEtiketPage() {
                     <div style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: '2mm', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5mm', letterSpacing: '2px' }}>
                       İçerik Bilgisi / Content
                     </div>
-                    <div style={{ flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
-                      <div className="rich-content" style={{
-                        fontSize: product.replace(/<[^>]*>/g, '').length > 200 ? '11px' : '13px',
+                    <div ref={contentBoxRef} style={{ flexGrow: 1, overflow: 'hidden', position: 'relative' }}>
+                      <div ref={contentInnerRef} className="rich-content" style={{
+                        fontSize: `${contentFont}px`,
                         color: product ? '#374151' : '#d1d5db',
                         fontWeight: 400,
                         whiteSpace: 'pre-wrap',
-                        lineHeight: 1.5,
+                        lineHeight: 1.4,
                         fontStyle: product ? 'normal' : 'italic',
+                        columnCount: contentCols,
+                        columnGap: '14px',
                       }}>
                         {product
                           ? <span dangerouslySetInnerHTML={{ __html: renderRichHtml(product) }} />

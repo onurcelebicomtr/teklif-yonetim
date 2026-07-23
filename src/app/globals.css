@@ -42,3 +42,7 @@
 .rich-content ol { list-style: decimal; padding-left: 20px; margin: 2px 0; }
 .rich-content b, .rich-content strong { font-weight: 700; }
 .rich-content i, .rich-content em { font-style: italic; }
+
+/* Kargo etiketi içerik listesi — sütunlar arası madde bölünmesin */
+.rich-content li { break-inside: avoid; -webkit-column-break-inside: avoid; }
+.rich-content ul { margin-top: 0; margin-bottom: 0; }
