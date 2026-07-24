@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import { getBrand } from '@/lib/brands';
+import { stripHtml } from '@/components/RichEditor';
 import {
   Order, OrderItem, OrderStatus,
   ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, ORDER_STATUS_ROW_COLORS,
@@ -139,7 +140,7 @@ export default function OrdersPage() {
     return brandProposals
       .filter((p) =>
         (p.proposal_no || '').toLocaleLowerCase('tr-TR').includes(s) ||
-        (p.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
+        stripHtml(p.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
         (p.project_name || '').toLocaleLowerCase('tr-TR').includes(s)
       )
       .slice(0, 10);
@@ -155,7 +156,7 @@ export default function OrdersPage() {
       const s = search.toLocaleLowerCase('tr-TR');
       return (
         (o.order_no || '').toLocaleLowerCase('tr-TR').includes(s) ||
-        (o.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
+        stripHtml(o.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
         (o.proposal_no || '').toLocaleLowerCase('tr-TR').includes(s) ||
         (o.assigned_to || '').toLocaleLowerCase('tr-TR').includes(s)
       );
@@ -241,7 +242,7 @@ export default function OrdersPage() {
   // Select proposal to import
   const selectProposal = (p: typeof brandProposals[0]) => {
     setFormProposalNo(p.proposal_no);
-    setFormCustomerName(p.customer_name);
+    setFormCustomerName(stripHtml(p.customer_name));
     setFormCustomerPhone(p.customer_phone || '');
     setFormCustomerCity(p.customer_city || '');
     setFormCustomerAddress(p.customer_address || '');
@@ -338,7 +339,7 @@ export default function OrdersPage() {
     setEditingOrder(o.id);
     setFormOrderNo(o.order_no);
     setFormProposalNo(o.proposal_no || '');
-    setFormCustomerName(o.customer_name);
+    setFormCustomerName(stripHtml(o.customer_name));
     setFormCustomerPhone(o.customer_phone || '');
     setFormCustomerCity(o.customer_city || '');
     setFormCustomerAddress(o.customer_address || '');
@@ -471,7 +472,7 @@ export default function OrdersPage() {
           <td style="vertical-align: top; width: 55%; border: 1.5px solid ${accent}; padding: 16px; border-radius: 4px;">
             <div style="font-size: 10px; color: ${accent}; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px;">Sayın (Alıcı Bilgileri)</div>
             <div style="font-size: 14px; line-height: 1.7;">
-              <strong style="font-size: 15px;">${order.customer_name}</strong><br>
+              <strong style="font-size: 15px;">${stripHtml(order.customer_name)}</strong><br>
               ${order.customer_address ? `${order.customer_address}<br>` : ''}
               ${order.customer_city || ''}
             </div>
@@ -615,7 +616,7 @@ export default function OrdersPage() {
                       className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0"
                     >
                       <span className="font-medium">{p.proposal_no}</span>
-                      <span className="text-gray-500"> — {p.customer_name}</span>
+                      <span className="text-gray-500"> — {stripHtml(p.customer_name)}</span>
                       {p.project_name && <span className="text-gray-400"> ({p.project_name})</span>}
                     </button>
                   ))}
@@ -1028,7 +1029,7 @@ export default function OrdersPage() {
                     <span className="font-semibold text-sm">{order.order_no}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-800 truncate block">{order.customer_name}</span>
+                    <span className="text-sm font-medium text-gray-800 truncate block">{stripHtml(order.customer_name)}</span>
                   </div>
                   {order.proposal_no && (
                     <span className="text-xs text-gray-400 hidden md:block">Teklif: {order.proposal_no}</span>

@@ -152,3 +152,18 @@ export function renderRichHtml(v: string): string {
   if (!v) return '';
   return /<[a-z][\s\S]*>/i.test(v) ? v : v.replace(/\n/g, '<br>');
 }
+
+// Zengin metni (HTML) düz metne çevirir — liste/kart gibi yerlerde temiz gösterim için
+export function stripHtml(v: string): string {
+  if (!v) return '';
+  return v
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

@@ -10,6 +10,7 @@ import { useState, useRef } from 'react';
 import type { ProposalStatus, Proposal } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types';
 import Link from 'next/link';
+import { stripHtml } from '@/components/RichEditor';
 
 export default function TekliflerPage() {
   const params = useParams();
@@ -38,7 +39,7 @@ export default function TekliflerPage() {
       const s = search.toLocaleLowerCase('tr-TR');
       return (
         (p.project_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
-        (p.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
+        stripHtml(p.customer_name || '').toLocaleLowerCase('tr-TR').includes(s) ||
         (p.proposal_no || '').toLocaleLowerCase('tr-TR').includes(s) ||
         (p.prepared_by || '').toLocaleLowerCase('tr-TR').includes(s)
       );
@@ -437,7 +438,7 @@ export default function TekliflerPage() {
                     </span>
                   </div>
                   <div className="text-sm text-gray-500">
-                    <span className="font-medium text-gray-700">{p.customer_name || 'Müşteri Yok'}</span>
+                    <span className="font-medium text-gray-700">{stripHtml(p.customer_name || '') || 'Müşteri Yok'}</span>
                     <span className="mx-2">•</span>
                     <span>{p.proposal_no}</span>
                     <span className="mx-2">•</span>

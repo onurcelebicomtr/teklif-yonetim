@@ -5,6 +5,7 @@ import { getBrand } from '@/lib/brands';
 import { useAppStore } from '@/lib/store';
 import { FileText, Users, Package, TrendingUp, Plus, Clock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { stripHtml } from '@/components/RichEditor';
 
 export default function DashboardPage() {
   const params = useParams();
@@ -116,7 +117,7 @@ export default function DashboardPage() {
                 <Link key={p.id} href={`/${brandId}/teklif/yeni?id=${p.id}`} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition cursor-pointer">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-gray-800 truncate">{p.project_name || 'İsimsiz Proje'}</div>
-                    <div className="text-xs text-gray-500">{p.customer_name || 'Müşteri Yok'} • {p.proposal_no}</div>
+                    <div className="text-xs text-gray-500">{stripHtml(p.customer_name || '') || 'Müşteri Yok'} • {p.proposal_no}</div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${statusColors[p.status] || 'bg-gray-100 text-gray-600'}`}>
