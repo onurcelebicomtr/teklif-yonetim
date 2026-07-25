@@ -11,7 +11,7 @@ import {
 import {
   Package, Store, Warehouse, Plus, Search, Pencil, Trash2, X, FileDown, Upload,
   ArrowRightLeft, ArrowDownToLine, ArrowUpFromLine, Loader2, ShieldCheck, Boxes,
-  Tag, Layers, AlertTriangle, Printer, PackageSearch,
+  Tag, Layers, AlertTriangle, Printer, PackageSearch, Copy,
 } from 'lucide-react';
 
 // Teklif kataloğundan hafif ürün kaydı (otomatik doldurma için)
@@ -194,6 +194,24 @@ export default function StokPage() {
     if (!res.ok) { showToast('Silinemedi.'); return; }
     await load();
     showToast('Ürün silindi.');
+  };
+
+  const duplicateProduct = async (p: StokProduct) => {
+    const copy = {
+      id: Date.now(),
+      code: p.code, name: `${p.name} (Kopya)`, brand: p.brand, category: p.category, color: p.color,
+      store_boxed: p.store_boxed, store_unboxed: p.store_unboxed,
+      warehouse_boxed: p.warehouse_boxed, warehouse_unboxed: p.warehouse_unboxed,
+      cost_list: p.cost_list, cost_discount: p.cost_discount, cost: p.cost,
+      cost_currency: p.cost_currency, sale_price: p.sale_price, sale_manual: p.sale_manual,
+    };
+    const res = await fetch('/api/stok/products', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(copy),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Çoğaltılamadı.'); return; }
+    await load();
+    showToast('Ürün çoğaltıldı.');
   };
 
   const doMovement = async (payload: any) => {
@@ -422,6 +440,7 @@ export default function StokPage() {
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => setMoveModal({ open: true, product: p })} className="text-white p-1.5 rounded" style={{ background: NAVY }} title="Stok Hareketi"><ArrowRightLeft className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => duplicateProduct(p)} className="text-emerald-500 hover:bg-emerald-500 hover:text-white p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Aynı ürünü çoğalt"><Copy className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setProductModal({ open: true, edit: p })} className="text-blue-500 hover:bg-blue-500 hover:text-white p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Düzenle"><Pencil className="w-3.5 h-3.5" /></button>
                           <button onClick={() => deleteProduct(p)} className="text-gray-400 hover:bg-rose-500 hover:text-white p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Sil"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
